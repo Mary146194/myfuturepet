@@ -1,0 +1,2 @@
+C:/Users/user/Music/myfuturepet/build/.cxx/debug/1b4ef3e9/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/user/Music/myfuturepet/build/.cxx/debug/1b4ef3e9/arm64-v8a/CMakeFiles/rebuild_cache.dir
