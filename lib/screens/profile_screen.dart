@@ -950,7 +950,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ? Image.network(
                                           profileImage,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
+                                          errorBuilder: (context, error, stackTrace) => Container(
                                             color: isDark ? const Color(0xFF0F172A) : lightBlue,
                                             alignment: Alignment.center,
                                             child: Text(

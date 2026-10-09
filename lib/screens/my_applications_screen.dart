@@ -477,7 +477,7 @@ class _MyApplicationsScreenState
                   fit: BoxFit.cover,
 
                   errorBuilder:
-                      (_, __, ___) {
+                      (context, error, stackTrace) {
                     return Container(
                       width: 90,
                       height: 90,
@@ -1052,7 +1052,7 @@ class ApplicationDetailsScreen
                       fit: BoxFit.cover,
 
                       errorBuilder:
-                          (_, __, ___) {
+                          (context, error, stackTrace) {
                         return Container(
                           width: 90,
                           height: 90,

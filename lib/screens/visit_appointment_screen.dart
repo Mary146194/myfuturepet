@@ -289,7 +289,7 @@ void _confirmAppointment() {
               height: 42,
 
               decoration: BoxDecoration(
-                color: tealColor.withOpacity(0.12),
+                color: tealColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
 
@@ -615,7 +615,7 @@ void _confirmAppointment() {
                     boxShadow: [
                       BoxShadow(
                         color:
-                            Colors.black.withOpacity(0.04),
+                            Colors.black.withValues(alpha: 0.04),
 
                         blurRadius: 8,
 
@@ -662,7 +662,7 @@ void _confirmAppointment() {
                                   BoxDecoration(
                                 color: isSelected
                                     ? primaryColor
-                                        .withOpacity(0.06)
+                                        .withValues(alpha: 0.06)
                                     : Colors.white,
 
                                 border: Border.all(
@@ -697,8 +697,8 @@ void _confirmAppointment() {
                                         BoxDecoration(
                                       color: isSelected
                                           ? primaryColor
-                                              .withOpacity(
-                                              0.10,
+                                              .withValues(
+                                              alpha: 0.10,
                                             )
                                           : lightBlue,
 
@@ -785,7 +785,7 @@ void _confirmAppointment() {
                     boxShadow: [
                       BoxShadow(
                         color:
-                            Colors.black.withOpacity(0.04),
+                            Colors.black.withValues(alpha: 0.04),
 
                         blurRadius: 8,
 
@@ -925,7 +925,7 @@ void _confirmAppointment() {
                     boxShadow: [
                       BoxShadow(
                         color:
-                            Colors.black.withOpacity(0.04),
+                            Colors.black.withValues(alpha: 0.04),
 
                         blurRadius: 8,
 
@@ -986,7 +986,7 @@ void _confirmAppointment() {
                               BoxDecoration(
                             color: isSelected
                                 ? primaryColor
-                                    .withOpacity(0.08)
+                                    .withValues(alpha: 0.08)
                                 : Colors.white,
 
                             border: Border.all(
@@ -1061,7 +1061,7 @@ void _confirmAppointment() {
                     boxShadow: [
                       BoxShadow(
                         color:
-                            Colors.black.withOpacity(0.04),
+                            Colors.black.withValues(alpha: 0.04),
 
                         blurRadius: 8,
 
@@ -1353,7 +1353,7 @@ void _confirmAppointment() {
 
           decoration: BoxDecoration(
             color:
-                primaryColor.withOpacity(0.08),
+                primaryColor.withValues(alpha: 0.08),
 
             shape: BoxShape.circle,
           ),

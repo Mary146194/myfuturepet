@@ -470,9 +470,7 @@ class _SavedPetsScreenState
         boxShadow: [
           BoxShadow(
             color:
-                Colors.black.withOpacity(
-              0.05,
-            ),
+                Colors.black.withValues(alpha: 0.05),
 
             blurRadius: 8,
 

@@ -1147,7 +1147,7 @@ class _AdoptionProcessScreenState
               fit: BoxFit.cover,
 
               errorBuilder:
-                  (_, __, ___) {
+                  (context, error, stackTrace) {
                 return Container(
                   width: 72,
                   height: 72,

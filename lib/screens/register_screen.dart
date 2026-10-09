@@ -294,7 +294,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
 
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.88),
+                      color: Colors.white.withValues(alpha: 0.88),
 
                       borderRadius:
                           BorderRadius.circular(24),
@@ -302,7 +302,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       boxShadow: [
                         BoxShadow(
                           color:
-                              Colors.black.withOpacity(0.04),
+                              Colors.black.withValues(alpha: 0.04),
                           blurRadius: 12,
                           offset:
                               const Offset(0, 4),

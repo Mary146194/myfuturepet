@@ -321,9 +321,7 @@ class _CommunityFeedScreenState
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black
-                                    .withOpacity(
-                                  0.18,
-                                ),
+                                    .withValues(alpha: 0.18),
                                 blurRadius: 6,
                                 offset:
                                     const Offset(
