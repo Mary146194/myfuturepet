@@ -1,0 +1,8 @@
+build/
+.dart_tool/
+.pub-cache/
+chat_history.json
+opencode.json
+*.log
+.env
+.env.*

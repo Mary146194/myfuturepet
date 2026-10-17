@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import '../adoption_application_store.dart';
+import '../services/adoption_service.dart';
 
 class AdoptionProcessScreen extends StatefulWidget {
   final Map<String, dynamic> pet;
+  final AdoptionService? adoptionService;
 
   const AdoptionProcessScreen({
     super.key,
     required this.pet,
+    this.adoptionService,
   });
 
   @override
@@ -84,6 +87,7 @@ class _AdoptionProcessScreenState
   // ============================================================
 
   String? householdType;
+  String? yardAvailability;
   String? experienceLevel;
   String? homeEnvironment;
   String? activityLevel;
@@ -135,7 +139,9 @@ class _AdoptionProcessScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !_submitting,
+      child: Scaffold(
       backgroundColor: backgroundColor,
 
       // ========================================================
@@ -148,7 +154,7 @@ class _AdoptionProcessScreenState
         centerTitle: true,
 
         leading: IconButton(
-          onPressed: _confirmExit,
+          onPressed: _submitting ? null : _confirmExit,
           icon: const Icon(
             Icons.close_rounded,
             color: darkText,
@@ -258,6 +264,7 @@ class _AdoptionProcessScreenState
           // BOTTOM BUTTONS
           _buildBottomButton(),
         ],
+      ),
       ),
     );
   }
@@ -460,6 +467,14 @@ class _AdoptionProcessScreenState
 
         const SizedBox(height: 14),
 
+        _buildDropdown(
+          value: yardAvailability,
+          label: 'Yard Availability',
+          hint: 'Select yard availability',
+          items: const ['Fenced yard', 'Unfenced yard', 'No yard'],
+          onChanged: (value) => setState(() => yardAvailability = value),
+        ),
+        const SizedBox(height: 14),
         _buildTextField(
           controller: addressController,
           label: 'Complete Address',
@@ -762,7 +777,7 @@ class _AdoptionProcessScreenState
           title: 'Household Information',
           icon: Icons.home_outlined,
           items: [
-            'Household: ${householdType ?? 'Not provided'}',
+            'Household: ${householdType ?? 'Not provided'}\nYard: ${yardAvailability ?? 'Not provided'}',
             'Address: ${addressController.text}',
             'Members: ${householdMembersController.text}',
             'Children: ${childrenController.text}',
@@ -888,6 +903,7 @@ class _AdoptionProcessScreenState
           ),
 
           child: TextField(
+            key: ValueKey(label),
             controller: controller,
             keyboardType: keyboardType,
             maxLines: maxLines,
@@ -975,6 +991,7 @@ class _AdoptionProcessScreenState
 
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
+              key: ValueKey(label),
               value: value,
               isExpanded: true,
 
@@ -1353,7 +1370,7 @@ class _AdoptionProcessScreenState
                 child: OutlinedButton(
                   onPressed: () {
                     setState(() {
-                      currentStep--;
+                      if (!_submitting) currentStep--;
                     });
                   },
 
@@ -1396,7 +1413,7 @@ class _AdoptionProcessScreenState
                 height: 50,
 
                 child: ElevatedButton(
-                  onPressed: _handleNext,
+                  onPressed: _submitting ? null : _handleNext,
 
                   style:
                       ElevatedButton.styleFrom(
@@ -1422,18 +1439,19 @@ class _AdoptionProcessScreenState
                         MainAxisAlignment.center,
 
                     children: [
-                      Text(
-                        lastStep
-                            ? 'Submit Application'
-                            : 'Next Step',
-                        style:
-                            const TextStyle(
-                          fontSize: 14,
-                          fontWeight:
-                              FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          _submitting ? 'Submitting...' : lastStep
+                              ? 'Submit Application'
+                              : 'Next Step',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-
                       if (!lastStep) ...[
                         const SizedBox(width: 8),
 
@@ -1458,6 +1476,7 @@ class _AdoptionProcessScreenState
   // ============================================================
 
   void _handleNext() {
+    if (_submitting) return;
     if (!_validateCurrentStep()) {
       return;
     }
@@ -1527,7 +1546,7 @@ class _AdoptionProcessScreenState
         return true;
 
       case 1:
-        if (householdType == null ||
+        if (householdType == null || yardAvailability == null ||
             addressController.text
                 .trim()
                 .isEmpty ||
@@ -1609,12 +1628,19 @@ class _AdoptionProcessScreenState
   }
 
 
-  void _submitApplication() {
+  bool _submitting = false;
+
+  Future<void> _submitApplication() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+
     // ============================================================
     // SAVE APPLICATION
     // ============================================================
 
-    AdoptionApplicationStore.saveApplication(
+    try {
+      await AdoptionApplicationStore.saveApplication(
+      service: widget.adoptionService,
       pet: widget.pet,
 
       // PERSONAL INFORMATION
@@ -1626,6 +1652,7 @@ class _AdoptionProcessScreenState
 
       // HOUSEHOLD INFORMATION
       householdType: householdType ?? '',
+      yardAvailability: yardAvailability ?? 'Not provided',
       address: addressController.text.trim(),
       householdMembers:
           householdMembersController.text.trim(),
@@ -1651,7 +1678,23 @@ class _AdoptionProcessScreenState
       // ADOPTION
       adoptionReason:
           adoptionReasonController.text.trim(),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      final msg = e.toString().toLowerCase();
+      _showMessage(
+        msg.contains('uq_active_application') || msg.contains('duplicate')
+            ? 'You already have an active application for this pet.'
+            : msg.contains('logged in')
+                ? 'Please log in to submit an adoption application.'
+                : 'Could not submit your application. Please check your connection and try again.',
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _submitting = false);
 
     // ============================================================
     // SUCCESS DIALOG

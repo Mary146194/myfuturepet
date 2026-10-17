@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notifications_screen.dart';
 import '../services/community_service.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+  final CommunityService? communityService;
+  final ValueNotifier<int>? unreadCount;
+  const FeedScreen({super.key, this.communityService, this.unreadCount});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  final CommunityService _communityService = CommunityService();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  late final CommunityService _communityService;
+  bool _postsFailed = false;
+  int _loadVersion = 0;
+  final Set<String> _pendingLikes = {};
 
   static const Color primaryColor = Color(0xFFA94327);
   static const Color backgroundColor = Color(0xFFF6F8F9);
@@ -41,6 +44,7 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
+    _communityService = widget.communityService ?? CommunityService();
     _loadCurrentUser();
     _loadPosts();
   }
@@ -50,26 +54,24 @@ class _FeedScreenState extends State<FeedScreen> {
   // ============================================================
   Future<void> _loadCurrentUser() async {
     try {
-      final user = _supabase.auth.currentUser;
+      final user = _communityService.currentUser;
       if (user == null) return;
 
       String name = user.userMetadata?['full_name']?.toString().trim() ?? '';
       String avatar = user.userMetadata?['avatar_url']?.toString().trim() ?? '';
 
       if (name.isEmpty) {
-        name = user.email?.split('@').first ?? 'User';
+        name = 'Community member';
       }
 
       try {
-        final profile = await _supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', user.id)
-            .maybeSingle();
+        final profile = await _communityService.fetchMyPublicProfile();
 
         if (profile != null) {
           final dbName = profile['full_name']?.toString().trim() ?? '';
           if (dbName.isNotEmpty) name = dbName;
+          final dbAvatar = profile['avatar_url']?.toString().trim() ?? '';
+          if (dbAvatar.isNotEmpty) avatar = dbAvatar;
         }
       } catch (_) {}
 
@@ -86,15 +88,17 @@ class _FeedScreenState extends State<FeedScreen> {
   // LOAD POSTS FROM SUPABASE
   // ============================================================
   Future<void> _loadPosts() async {
-    setState(() => _loadingPosts = true);
+    final version = ++_loadVersion;
+    setState(() { _loadingPosts = true; _postsFailed = false; });
     try {
-      final fetched = await _communityService.fetchPosts();
+      final fetched = await _communityService.fetchPosts(throwOnError: true);
 
-      if (mounted) {
+      if (mounted && version == _loadVersion) {
         setState(() {
           _posts = fetched;
           for (final post in fetched) {
             final id = post['id']?.toString() ?? '';
+            if (_pendingLikes.contains(id)) continue;
             _likedPostIds[id] = post['is_liked_by_me'] == true;
             _likeCounts[id] = (post['like_count'] as num?)?.toInt() ?? 0;
             _commentCounts[id] = (post['comment_count'] as num?)?.toInt() ?? 0;
@@ -104,7 +108,7 @@ class _FeedScreenState extends State<FeedScreen> {
       }
     } catch (e) {
       debugPrint('Error loading community posts: $e');
-      if (mounted) setState(() => _loadingPosts = false);
+      if (mounted && version == _loadVersion) setState(() { _loadingPosts = false; _postsFailed = true; });
     }
   }
 
@@ -112,6 +116,7 @@ class _FeedScreenState extends State<FeedScreen> {
   // LIKE TOGGLE (REAL DATABASE PERSISTENCE)
   // ============================================================
   Future<void> _toggleLike(String postId) async {
+    if (!_pendingLikes.add(postId)) return;
     final bool currentLiked = _likedPostIds[postId] ?? false;
     final int currentCount = _likeCounts[postId] ?? 0;
 
@@ -129,8 +134,11 @@ class _FeedScreenState extends State<FeedScreen> {
         currentLiked,
         currentCount,
       );
+      int? serverCount;
+      try { serverCount = await _communityService.fetchLikeCount(postId); } catch (_) {}
       if (mounted) {
         setState(() {
+          if (serverCount != null) _likeCounts[postId] = serverCount;
           _likedPostIds[postId] = newLiked;
         });
       }
@@ -142,8 +150,14 @@ class _FeedScreenState extends State<FeedScreen> {
           _likeCounts[postId] = currentCount;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please log in to like posts: $e')),
+          const SnackBar(content: Text('Unable to update your like. Check your connection and sign-in, then try again.')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _pendingLikes.remove(postId));
+      } else {
+        _pendingLikes.remove(postId);
       }
     }
   }
@@ -229,12 +243,14 @@ class _FeedScreenState extends State<FeedScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Create Community Post',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
+                        Expanded(
+                          child: Text(
+                            'Create Community Post',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
+                            ),
                           ),
                         ),
                         IconButton(
@@ -354,14 +370,16 @@ class _FeedScreenState extends State<FeedScreen> {
                                         : null,
                                   );
                                   if (ctx.mounted) Navigator.pop(ctx);
+                                  if (!mounted) return;
                                   _loadPosts();
                                   messenger.showSnackBar(
                                     const SnackBar(content: Text('Post published to Community Feed!')),
                                   );
                                 } catch (err) {
+                                  if (!ctx.mounted) return;
                                   setModalState(() => submitting = false);
                                   messenger.showSnackBar(
-                                    SnackBar(content: Text('Error publishing post: $err')),
+                                    const SnackBar(content: Text('Unable to publish. Check the post, image URL, and your sign-in, then try again.')),
                                   );
                                 }
                               },
@@ -506,7 +524,7 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
           const Spacer(),
           ValueListenableBuilder<int>(
-            valueListenable: NotificationService().unreadCountNotifier,
+            valueListenable: widget.unreadCount ?? NotificationService().unreadCountNotifier,
             builder: (context, unreadCount, child) {
               return Stack(
                 alignment: Alignment.center,
@@ -624,6 +642,13 @@ class _FeedScreenState extends State<FeedScreen> {
       return const Center(child: CircularProgressIndicator(color: primaryColor));
     }
 
+    if (_postsFailed) {
+      return ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
+        const SizedBox(height: 60),
+        const Center(child: Text('Unable to load community posts. Please try again.')),
+        Center(child: TextButton(onPressed: _loadPosts, child: const Text('Retry'))),
+      ]);
+    }
     final filtered = selectedCategory == 'All'
         ? _posts
         : _posts.where((p) => p['category'] == selectedCategory).toList();
@@ -662,6 +687,12 @@ class _FeedScreenState extends State<FeedScreen> {
   // ============================================================
   // POST CARD (MATCHES FIGMA / USER SCREENSHOT + REPOST)
   // ============================================================
+  Widget _authorInitial(String name) => ColoredBox(
+    color: const Color(0xFFFFECD9),
+    child: Center(child: Text(name.isEmpty ? 'U' : name[0].toUpperCase(),
+      style: const TextStyle(fontWeight: FontWeight.bold, color: primaryColor))),
+  );
+
   Widget _buildPostCard(Map<String, dynamic> post) {
     final bool isDark = ThemeService.isDarkMode(context);
     final String postId = post['id']?.toString() ?? '';
@@ -673,17 +704,17 @@ class _FeedScreenState extends State<FeedScreen> {
     final authorMap = post['author'] as Map<String, dynamic>?;
     final shelterMap = post['shelter'] as Map<String, dynamic>?;
 
-    String authorName = 'My Future Pet';
+    String authorName = 'Community member';
     String? authorAvatar;
 
-    if (shelterMap != null && shelterMap['name'] != null) {
-      authorName = shelterMap['name'].toString().toUpperCase();
+    final name = authorMap?['full_name']?.toString().trim() ?? '';
+    if (name.isNotEmpty) {
+      authorName = name;
+      authorAvatar = authorMap?['avatar_url']?.toString();
+    } else if (shelterMap != null && shelterMap['name'] != null) {
+      authorName = shelterMap['name'].toString();
       authorAvatar = shelterMap['logo_url']?.toString();
-    } else if (authorMap != null && authorMap['full_name'] != null) {
-      authorName = authorMap['full_name'].toString();
-      authorAvatar = authorMap['avatar_url']?.toString();
     }
-
     final bool isLiked = _likedPostIds[postId] ?? false;
     final int likes = _likeCounts[postId] ?? ((post['like_count'] as num?)?.toInt() ?? 0);
     final int comments = _commentCounts[postId] ?? ((post['comment_count'] as num?)?.toInt() ?? 0);
@@ -714,18 +745,13 @@ class _FeedScreenState extends State<FeedScreen> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFFD0E3EA),
-                  backgroundImage: (authorAvatar != null && authorAvatar.isNotEmpty)
-                      ? NetworkImage(authorAvatar)
-                      : null,
-                  child: (authorAvatar == null || authorAvatar.isEmpty)
-                      ? Text(
-                          authorName.isNotEmpty ? authorName[0].toUpperCase() : 'P',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
-                        )
-                      : null,
+                ClipOval(
+                  child: SizedBox(width: 40, height: 40,
+                    child: authorAvatar != null && authorAvatar.isNotEmpty
+                      ? Image.network(authorAvatar, fit: BoxFit.cover,
+                          errorBuilder: (_, error, stack) => _authorInitial(authorName))
+                      : _authorInitial(authorName),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -800,7 +826,8 @@ class _FeedScreenState extends State<FeedScreen> {
               children: [
                 // Heart / Like
                 GestureDetector(
-                  onTap: () => _toggleLike(postId),
+                  key: ValueKey('like-$postId'),
+                  onTap: _pendingLikes.contains(postId) ? null : () => _toggleLike(postId),
                   behavior: HitTestBehavior.opaque,
                   child: Row(
                     children: [

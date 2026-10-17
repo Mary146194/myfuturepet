@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../appointment_store.dart';
+import '../appointment_schedule.dart';
+import '../services/appointment_service.dart';
 
 // ============================================================
 // VISIT APPOINTMENT SCREEN
@@ -7,10 +9,14 @@ import '../appointment_store.dart';
 
 class VisitAppointmentScreen extends StatefulWidget {
   final Map<String, dynamic> pet;
+  final AppointmentService? appointmentService;
+  final DateTime Function()? now;
 
   const VisitAppointmentScreen({
     super.key,
     required this.pet,
+    this.appointmentService,
+    this.now,
   });
 
   @override
@@ -37,9 +43,11 @@ class _VisitAppointmentScreenState
 
   String selectedAppointmentType = 'Shelter Visit';
 
-  DateTime selectedDate = DateTime.now();
+  late DateTime selectedDate;
 
   String? selectedTime;
+  bool _booking = false;
+  DateTime _now() => widget.now?.call() ?? DateTime.now();
 
   // ============================================================
   // CALENDAR
@@ -51,7 +59,8 @@ class _VisitAppointmentScreenState
   void initState() {
     super.initState();
 
-    final now = DateTime.now();
+    selectedDate = AppointmentSchedule.firstBookableDate(_now());
+    final now = selectedDate;
 
     displayedMonth = DateTime(
       now.year,
@@ -67,28 +76,20 @@ class _VisitAppointmentScreenState
   final List<String> appointmentTypes = [
     'Shelter Visit',
     'Meet and Greet',
-    'Interview',
   ];
 
   // ============================================================
   // AVAILABLE TIMES
   // ============================================================
 
-  final List<String> availableTimes = [
-    '9:00 AM',
-    '10:30 AM',
-    '1:00 PM',
-    '2:00 PM',
-    '3:30 PM',
-    '4:00 PM',
-  ];
+  final List<String> availableTimes = AppointmentSchedule.timeSlots;
 
   // ============================================================
   // CHANGE MONTH
   // ============================================================
 
   void _changeMonth(int amount) {
-    final now = DateTime.now();
+    final now = AppointmentSchedule.inManila(_now());
 
     final currentMonth = DateTime(
       now.year,
@@ -199,7 +200,7 @@ class _VisitAppointmentScreenState
   // ============================================================
 
   bool _isPastDate(DateTime date) {
-    final today = DateTime.now();
+    final today = AppointmentSchedule.inManila(_now());
 
     final todayOnly = DateTime(
       today.year,
@@ -221,7 +222,7 @@ class _VisitAppointmentScreenState
   // ============================================================
 
   void _selectDate(DateTime date) {
-    if (_isPastDate(date)) {
+    if (_booking || !AppointmentSchedule.isDateSelectable(date, _now())) {
       return;
     }
 
@@ -236,6 +237,7 @@ class _VisitAppointmentScreenState
   // ============================================================
 
   void _selectTime(String time) {
+    if (_booking || !AppointmentSchedule.isSlotSelectable(selectedDate, time, _now())) return;
     setState(() {
       selectedTime = time;
     });
@@ -245,8 +247,9 @@ class _VisitAppointmentScreenState
 // CONFIRM APPOINTMENT
 // ============================================================
 
-void _confirmAppointment() {
-  if (selectedTime == null) {
+Future<void> _confirmAppointment() async {
+  if (_booking) return;
+  if (selectedTime == null || !AppointmentSchedule.isSlotSelectable(selectedDate, selectedTime!, _now())) {
     _showMessage(
       'Please select an available time.',
     );
@@ -257,7 +260,10 @@ void _confirmAppointment() {
   // SAVE APPOINTMENT
   // ==========================================================
 
-  AppointmentStore.saveAppointment(
+  setState(() => _booking = true);
+  try {
+  await AppointmentStore.saveAppointment(
+    service: widget.appointmentService,
     pet: widget.pet,
     appointmentType: selectedAppointmentType,
     date: selectedDate,
@@ -265,6 +271,18 @@ void _confirmAppointment() {
     shelter: widget.pet['shelter']?.toString() ??
         'JAGNA ANIMAL LOVER AND RESCUE GROUP',
   );
+  } catch (error) {
+    if (!mounted) return;
+    setState(() => _booking = false);
+    final message = error.toString();
+    _showMessage(message.contains('logged in')
+        ? 'Please log in to request an appointment.'
+        : error is ArgumentError ? error.message.toString()
+        : 'Could not request your visit. Please check your connection and try again.');
+    return;
+  }
+  if (!mounted) return;
+  setState(() => _booking = false);
 
   // ==========================================================
   // SHOW CONFIRMATION
@@ -304,7 +322,7 @@ void _confirmAppointment() {
 
             const Expanded(
               child: Text(
-                'Appointment Confirmed',
+                'Visit Request Sent',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -316,7 +334,7 @@ void _confirmAppointment() {
         ),
 
         content: Text(
-          'Your visit with ${widget.pet['name']} has been scheduled for ${_formatDate(selectedDate)} at $selectedTime.',
+          'Your visit with ${widget.pet['name']} on ${_formatDate(selectedDate)} at $selectedTime (Philippine time) is pending shelter approval. View it under My Appointments.',
           style: TextStyle(
             color: darkText,
             fontSize: 14,
@@ -376,7 +394,11 @@ void _confirmAppointment() {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !_booking,
+      child: AbsorbPointer(
+        absorbing: _booking,
+        child: Scaffold(
       backgroundColor: detailBrown,
 
       // ========================================================
@@ -963,10 +985,10 @@ void _confirmAppointment() {
                       final isSelected =
                           selectedTime == time;
 
-                      final isUnavailable =
-                          time == '4:00 PM';
+                      final isUnavailable = !AppointmentSchedule.isSlotSelectable(selectedDate, time, _now());
 
                       return GestureDetector(
+                        key: ValueKey('slot-$time'),
                         onTap: isUnavailable
                             ? null
                             : () {
@@ -1172,8 +1194,7 @@ void _confirmAppointment() {
                   height: 56,
 
                   child: ElevatedButton(
-                    onPressed:
-                        _confirmAppointment,
+                    onPressed: _booking || selectedTime == null ? null : _confirmAppointment,
 
                     style:
                         ElevatedButton.styleFrom(
@@ -1202,7 +1223,7 @@ void _confirmAppointment() {
 
                       children: [
                         Text(
-                          'Confirm Appointment',
+                          _booking ? 'Sending...' : 'Request Appointment',
 
                           style: TextStyle(
                             fontSize: 15,
@@ -1244,7 +1265,7 @@ void _confirmAppointment() {
                 // Small helper text
                 Center(
                   child: Text(
-                    'Please select a date and available time.',
+                    'Philippine time (UTC+8). Mon–Sat, 9 AM–4 PM. Shelter approval required.',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey.shade600,
@@ -1254,6 +1275,8 @@ void _confirmAppointment() {
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );
@@ -1463,11 +1486,11 @@ void _confirmAppointment() {
                   selectedDate,
                 );
 
-                final past =
-                    _isPastDate(date);
+                final past = _isPastDate(date) || date.weekday == DateTime.sunday;
 
                 return Expanded(
                   child: GestureDetector(
+                    key: ValueKey('date-${date.year}-${date.month}-${date.day}'),
                     onTap: past
                         ? null
                         : () {

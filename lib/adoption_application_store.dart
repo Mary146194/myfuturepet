@@ -30,7 +30,9 @@ class AdoptionApplicationStore {
               'image': petRaw?['image_url']?.toString() ?? '',
               'status': petRaw?['status']?.toString() ?? 'Available',
             },
-            'status': (raw['status'] ?? 'pending').toString().toLowerCase() == 'pending'
+            'status':
+                (raw['status'] ?? 'pending').toString().toLowerCase() ==
+                    'pending'
                 ? 'Under Review'
                 : (raw['status'] ?? 'Under Review'),
             'fullName': raw['full_name']?.toString() ?? '',
@@ -101,6 +103,8 @@ class AdoptionApplicationStore {
 
     // ADOPTION
     required String adoptionReason,
+    String yardAvailability = 'Not provided',
+    AdoptionService? service,
   }) async {
     final Map<String, dynamic> newApplication = {
       'pet': Map<String, dynamic>.from(pet),
@@ -118,33 +122,66 @@ class AdoptionApplicationStore {
       'previousPets': previousPets,
       'currentPets': currentPets,
       'homeEnvironment': homeEnvironment,
+      'yardAvailability': yardAvailability,
       'activityLevel': activityLevel,
       'timeAvailable': timeAvailable,
       'adoptionReason': adoptionReason,
       'submittedAt': DateTime.now().toIso8601String(),
     };
 
-    applications.add(newApplication);
+    // Persist to Supabase Database first so the applicant is only told the
+    // application was sent when it actually reached the shelter's queue.
+    final petId = pet['id']?.toString() ?? '';
+    if (petId.isEmpty) {
+      throw Exception('This pet cannot accept applications right now.');
+    }
 
-    // Persist to Supabase Database
+    final currentPetsText = currentPets.trim();
+    final hasOtherPets =
+        currentPetsText.isNotEmpty &&
+        !RegExp(
+          r'^(none|no|n/a|na|nil|wala)\b',
+          caseSensitive: false,
+        ).hasMatch(currentPetsText);
+
+    // The table has no columns for these answers, so keep them readable in
+    // reason_for_adoption where the admin screening modal already shows them.
+    final reasonWithDetails = [
+      adoptionReason,
+      '— Applicant details —',
+      'Age: $age',
+      'Household members: $householdMembers, children: $children',
+      'Pet experience: $experienceLevel',
+      'Previous pets: $previousPets',
+      'Home environment: $homeEnvironment',
+      'Yard availability: $yardAvailability',
+      'Activity level: $activityLevel',
+      'Time available: $timeAvailable',
+      'Email: $email',
+    ].join('\n');
+
     try {
-      final petId = pet['id']?.toString() ?? '';
-      if (petId.isNotEmpty) {
-        final res = await AdoptionService().submitApplication(
-          petId: petId,
-          fullName: fullName,
-          contactNumber: phone,
-          address: address,
-          occupation: occupation,
-          housingType: householdType,
-          reasonForAdoption: adoptionReason,
-        );
-        if (res['id'] != null) {
-          newApplication['id'] = res['id'].toString();
-        }
+      final res = await (service ?? AdoptionService()).submitApplication(
+        petId: petId,
+        fullName: fullName,
+        contactNumber: phone,
+        address: address,
+        occupation: occupation,
+        housingType: householdType,
+        hasOtherPets: hasOtherPets,
+        otherPetsDetails: hasOtherPets ? currentPetsText : null,
+        reasonForAdoption: reasonWithDetails,
+      );
+      if (res['id'] == null || res['id'].toString().isEmpty) {
+        throw StateError('Application confirmation was missing.');
       }
+      if (res['id'] != null) {
+        newApplication['id'] = res['id'].toString();
+      }
+      applications.add(newApplication);
     } catch (e) {
       debugPrint('Adoption submission to Supabase error: $e');
+      rethrow;
     }
   }
 

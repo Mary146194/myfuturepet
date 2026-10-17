@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../saved_pet_store.dart';
+import '../services/pet_service.dart';
 import '../services/theme_service.dart';
 import 'adoption_process_screen.dart';
 import 'ar_view_screen.dart';
@@ -10,10 +11,14 @@ import 'visit_appointment_screen.dart';
 
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> pet;
+  final PetService? petService;
+  final Future<bool> Function(Uri uri, LaunchMode mode)? linkLauncher;
 
   const PetDetailsScreen({
     super.key,
     required this.pet,
+    this.petService,
+    this.linkLauncher,
   });
 
   @override
@@ -21,6 +26,43 @@ class PetDetailsScreen extends StatefulWidget {
 }
 
 class _PetDetailsScreenState extends State<PetDetailsScreen> {
+  late Map<String, dynamic> _pet;
+  bool _loadingPet = true;
+  String? _detailError;
+
+  @override
+  void initState() {
+    super.initState();
+    _pet = Map<String, dynamic>.from(widget.pet);
+    _loadPet();
+  }
+
+  Future<void> _loadPet() async {
+    setState(() {
+      _loadingPet = true;
+      _detailError = null;
+    });
+    try {
+      final id = _pet['id']?.toString() ?? '';
+      if (id.isEmpty) throw StateError('Missing pet ID');
+      final pet = await (widget.petService ?? PetService()).fetchPetById(
+        id,
+        throwOnError: true,
+      );
+      if (!mounted) return;
+      if (pet == null) {
+        _detailError = 'This pet is no longer available.';
+      } else {
+        _pet = pet;
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _detailError = 'Unable to refresh pet details. Please try again.';
+    } finally {
+      if (mounted) setState(() => _loadingPet = false);
+    }
+  }
+
   // ============================================================
   // COLORS
   // ============================================================
@@ -35,14 +77,12 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
   // ============================================================
 
   bool get isSaved {
-    return SavedPetStore.isSaved(
-      widget.pet['name'].toString(),
-    );
+    return SavedPetStore.isSaved(_pet['name'].toString());
   }
 
   void _sharePet() {
-    final petName = widget.pet['name'] ?? 'This pet';
-    final breed = widget.pet['breed'] ?? 'Adoptable pet';
+    final petName = _pet['name'] ?? 'This pet';
+    final breed = _pet['breed'] ?? 'Adoptable pet';
     SharePlus.instance.share(
       ShareParams(
         text:
@@ -54,35 +94,62 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
 
   void _toggleSave() {
     setState(() {
-      SavedPetStore.togglePet(widget.pet);
+      SavedPetStore.togglePet(_pet);
     });
 
     if (isSaved) {
-      _showMessage(
-        context,
-        '${widget.pet['name']} added to Saved Pets.',
-      );
+      _showMessage(context, '${_pet['name']} added to Saved Pets.');
     } else {
-      _showMessage(
-        context,
-        '${widget.pet['name']} removed from Saved Pets.',
-      );
+      _showMessage(context, '${_pet['name']} removed from Saved Pets.');
     }
   }
 
-  void _callShelter(BuildContext context) async {
-    final phone =
-        widget.pet['shelterPhone']?.toString() ?? '+63 900 000 0000';
-    final uri = Uri.parse('tel:${phone.replaceAll(' ', '')}');
+  Future<bool> _launchContact(Uri uri) {
+    final launcher = widget.linkLauncher;
+    if (launcher != null) return launcher(uri, LaunchMode.externalApplication);
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _chatOnMessenger() async {
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else if (context.mounted) {
-        _showMessage(context, 'Shelter contact: $phone');
+      final opened = await _launchContact(
+        Uri.parse('https://m.me/jagnaanimallover'),
+      );
+      if (!opened && mounted) {
+        _showMessage(context, 'Could not open Messenger. Please try again.');
       }
     } catch (_) {
-      if (context.mounted) {
-        _showMessage(context, 'Shelter contact: $phone');
+      if (mounted) {
+        _showMessage(context, 'Could not open Messenger. Please try again.');
+      }
+    }
+  }
+
+  Future<void> _callShelter() async {
+    final rawPhone = _pet['shelterPhone']?.toString().trim() ?? '';
+    if (rawPhone.isEmpty) {
+      _showMessage(context, 'Shelter contact number not provided.');
+      return;
+    }
+    final phone = rawPhone.replaceAll(RegExp(r'[\s().-]'), '');
+    if (!RegExp(r'^\+?\d{7,15}$').hasMatch(phone)) {
+      _showMessage(context, 'Shelter contact number is invalid.');
+      return;
+    }
+    try {
+      final opened = await _launchContact(Uri.parse('tel:$phone'));
+      if (!opened && mounted) {
+        _showMessage(
+          context,
+          'Could not open the phone app. Shelter contact: $rawPhone',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        _showMessage(
+          context,
+          'Could not open the phone app. Shelter contact: $rawPhone',
+        );
       }
     }
   }
@@ -95,52 +162,48 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
   Widget build(BuildContext context) {
     final bool isDark = ThemeService.isDarkMode(context);
 
-    final rawStatus = (widget.pet['status'] ?? 'Available').toString();
-    final bool isAvailable = rawStatus.toLowerCase() == 'available';
+    final rawStatus = (_pet['status'] ?? 'Available').toString();
+    final bool isAvailable =
+        !_loadingPet &&
+        _detailError == null &&
+        rawStatus.toLowerCase() == 'available';
 
-    final String name = (widget.pet['name'] ?? 'Pet').toString();
-    final String breed = (widget.pet['breed'] ?? 'Unknown Breed').toString();
-    final String category = (widget.pet['category'] ??
-            (widget.pet['type'] == 'dog' ? 'Dogs' : 'Cats'))
-        .toString();
-    final String gender = (widget.pet['gender'] ?? 'Unknown').toString();
+    final String name = (_pet['name'] ?? 'Pet').toString();
+    final String breed = (_pet['breed'] ?? 'Unknown Breed').toString();
+    final String category =
+        (_pet['category'] ?? (_pet['type'] == 'dog' ? 'Dogs' : 'Cats'))
+            .toString();
+    final String gender = (_pet['gender'] ?? 'Unknown').toString();
     final bool isFemale = gender.toLowerCase().contains('female');
 
-    final String location = (widget.pet['shelterAddress'] ??
-            widget.pet['location'] ??
-            'Jagna, Bohol, Philippines')
+    final String location =
+        (_pet['shelterAddress'] ??
+                _pet['location'] ??
+                'Jagna, Bohol, Philippines')
+            .toString();
+
+    final String age = (_pet['age'] ?? 'Young').toString();
+    final String weight =
+        (_pet['weight'] ??
+                (_pet['weight_kg'] != null
+                    ? '${_pet['weight_kg']} kg'
+                    : 'Normal'))
+            .toString();
+    final String size = (_pet['size'] ?? 'Medium').toString();
+    final String coatColor = (_pet['color'] ?? _pet['coatColor'] ?? 'Mixed')
         .toString();
 
-    final String age = (widget.pet['age'] ?? 'Young').toString();
-    final String weight = (widget.pet['weight'] ??
-            (widget.pet['weight_kg'] != null
-                ? '${widget.pet['weight_kg']} kg'
-                : 'Normal'))
-        .toString();
-    final String size = (widget.pet['size'] ?? 'Medium').toString();
-    final String coatColor =
-        (widget.pet['color'] ?? widget.pet['coatColor'] ?? 'Mixed').toString();
-
-    final String rawVaccinationStatus = (widget.pet['vaccination_status'] ??
-            widget.pet['vaccinationStatus'] ??
-            'fully_vaccinated')
-        .toString();
+    final String rawVaccinationStatus =
+        (_pet['vaccination_status'] ??
+                _pet['vaccinationStatus'] ??
+                'Not recorded')
+            .toString();
     final String vaccinationStatus = _formatTitleCase(rawVaccinationStatus);
-    final String healthCondition = (widget.pet['health_condition'] ??
-            widget.pet['healthCondition'] ??
-            'Healthy, hip checked')
-        .toString();
-    final String deworming = (widget.pet['deworming'] ??
-            (healthCondition.toLowerCase().contains('deworm')
-                ? 'Completed'
-                : 'Up to date'))
-        .toString();
-    final String rabies = (widget.pet['rabies'] ??
-            (rawVaccinationStatus.toLowerCase().contains('unvac')
-                ? 'Pending'
-                : 'Immunized'))
-        .toString();
-
+    final String healthCondition =
+        (_pet['health_condition'] ?? _pet['healthCondition'] ?? 'Not recorded')
+            .toString();
+    final String deworming = (_pet['deworming'] ?? 'Not recorded').toString();
+    final String rabies = (_pet['rabies'] ?? 'Not recorded').toString();
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : backgroundColor,
       body: Stack(
@@ -154,6 +217,23 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_loadingPet) const LinearProgressIndicator(),
+                if (_detailError != null)
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          Text(_detailError!),
+                          TextButton(
+                            onPressed: _loadPet,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 // ==================================================
                 // HERO IMAGE
                 // ==================================================
@@ -165,8 +245,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     children: [
                       // Pet Image
                       Image.network(
-                        widget.pet['image']?.toString() ??
-                            widget.pet['image_url']?.toString() ??
+                        _pet['image']?.toString() ??
+                            _pet['image_url']?.toString() ??
                             '',
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
@@ -176,7 +256,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                 ? const Color(0xFF1E293B)
                                 : const Color(0xFFE9EEF0),
                             child: Icon(
-                              widget.pet['category'] == 'Dogs'
+                              _pet['category'] == 'Dogs'
                                   ? Icons.pets
                                   : Icons.cruelty_free,
                               size: 80,
@@ -232,8 +312,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                   iconColor: isSaved
                                       ? primaryColor
                                       : (isDark
-                                          ? const Color(0xFFF8FAFC)
-                                          : darkText),
+                                            ? const Color(0xFFF8FAFC)
+                                            : darkText),
                                   onTap: _toggleSave,
                                 ),
                               ],
@@ -278,8 +358,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                 isAvailable
                                     ? 'Available for Free Adoption'
                                     : (rawStatus.isNotEmpty
-                                        ? rawStatus
-                                        : 'Adoption Pending'),
+                                          ? rawStatus
+                                          : 'Adoption Pending'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12.5,
@@ -295,7 +375,6 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                   ),
                 ),
 
-
                 // ==================================================
                 // MAIN DETAILS CARD
                 // ==================================================
@@ -309,12 +388,16 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                        color: isDark
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFE2E8F0),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.25 : 0.04,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -331,7 +414,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               child: Text(
                                 name,
                                 style: TextStyle(
-                                  color: isDark ? const Color(0xFFF8FAFC) : darkText,
+                                  color: isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : darkText,
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
                                   height: 1.15,
@@ -346,20 +431,28 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               decoration: BoxDecoration(
                                 color: isFemale
                                     ? (isDark
-                                        ? const Color(0xFF831843).withValues(alpha: 0.35)
-                                        : const Color(0xFFFFF0F5))
+                                          ? const Color(
+                                              0xFF831843,
+                                            ).withValues(alpha: 0.35)
+                                          : const Color(0xFFFFF0F5))
                                     : (isDark
-                                        ? const Color(0xFF0C4A6E).withValues(alpha: 0.35)
-                                        : const Color(0xFFE8F6FC)),
+                                          ? const Color(
+                                              0xFF0C4A6E,
+                                            ).withValues(alpha: 0.35)
+                                          : const Color(0xFFE8F6FC)),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: isFemale
                                       ? (isDark
-                                          ? const Color(0xFFDB2777).withValues(alpha: 0.45)
-                                          : const Color(0xFFF7B5CD))
+                                            ? const Color(
+                                                0xFFDB2777,
+                                              ).withValues(alpha: 0.45)
+                                            : const Color(0xFFF7B5CD))
                                       : (isDark
-                                          ? const Color(0xFF0284C7).withValues(alpha: 0.45)
-                                          : const Color(0xFFBCE3F7)),
+                                            ? const Color(
+                                                0xFF0284C7,
+                                              ).withValues(alpha: 0.45)
+                                            : const Color(0xFFBCE3F7)),
                                   width: 1,
                                 ),
                               ),
@@ -370,16 +463,24 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                     isFemale ? Icons.female : Icons.male,
                                     size: 15,
                                     color: isFemale
-                                        ? (isDark ? const Color(0xFFF472B6) : const Color(0xFFD63384))
-                                        : (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7)),
+                                        ? (isDark
+                                              ? const Color(0xFFF472B6)
+                                              : const Color(0xFFD63384))
+                                        : (isDark
+                                              ? const Color(0xFF38BDF8)
+                                              : const Color(0xFF0284C7)),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     isFemale ? 'Female' : 'Male',
                                     style: TextStyle(
                                       color: isFemale
-                                          ? (isDark ? const Color(0xFFF472B6) : const Color(0xFFD63384))
-                                          : (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7)),
+                                          ? (isDark
+                                                ? const Color(0xFFF472B6)
+                                                : const Color(0xFFD63384))
+                                          : (isDark
+                                                ? const Color(0xFF38BDF8)
+                                                : const Color(0xFF0284C7)),
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -396,7 +497,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                         Text(
                           '$breed • $category',
                           style: TextStyle(
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF45565B),
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF45565B),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -417,7 +520,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               child: Text(
                                 location,
                                 style: TextStyle(
-                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF75858A),
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF75858A),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -432,7 +537,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
 
                         // Divider
                         Divider(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFEEF3F5),
+                          color: isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFEEF3F5),
                           height: 1,
                           thickness: 1,
                         ),
@@ -499,12 +606,16 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.03),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.20 : 0.03,
+                        ),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -520,13 +631,17 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: isDark ? tealColor.withValues(alpha: 0.18) : const Color(0xFFE5F8F6),
+                              color: isDark
+                                  ? tealColor.withValues(alpha: 0.18)
+                                  : const Color(0xFFE5F8F6),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
                               Icons.security_outlined,
                               size: 20,
-                              color: isDark ? const Color(0xFF2DD4BF) : tealColor,
+                              color: isDark
+                                  ? const Color(0xFF2DD4BF)
+                                  : tealColor,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -536,7 +651,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: isDark ? const Color(0xFFF8FAFC) : darkText,
+                                color: isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : darkText,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -550,12 +667,16 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF14532D).withValues(alpha: 0.45)
+                                  ? const Color(
+                                      0xFF14532D,
+                                    ).withValues(alpha: 0.45)
                                   : const Color(0xFFD4F7DF),
                               borderRadius: BorderRadius.circular(20),
                               border: isDark
                                   ? Border.all(
-                                      color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+                                      color: const Color(
+                                        0xFF22C55E,
+                                      ).withValues(alpha: 0.4),
                                     )
                                   : null,
                             ),
@@ -565,13 +686,17 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                 Icon(
                                   Icons.check_circle_rounded,
                                   size: 13,
-                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
+                                  color: isDark
+                                      ? const Color(0xFF4ADE80)
+                                      : const Color(0xFF16A34A),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Vet Checked',
+                                  'Health Records',
                                   style: TextStyle(
-                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
+                                    color: isDark
+                                        ? const Color(0xFF4ADE80)
+                                        : const Color(0xFF16A34A),
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -633,7 +758,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       Text(
                         'Rescue pets undergo rigorous medical checkup and quarantine before rehoming.',
                         style: TextStyle(
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF88989D),
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF88989D),
                           fontSize: 11,
                           fontStyle: FontStyle.italic,
                           height: 1.35,
@@ -656,12 +783,16 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.03),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.20 : 0.03,
+                        ),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -686,7 +817,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       Builder(
                         builder: (context) {
                           List<dynamic> personalityList = [];
-                          final rawPersonality = widget.pet['personality'];
+                          final rawPersonality = _pet['personality'];
                           if (rawPersonality is List) {
                             personalityList = rawPersonality;
                           } else if (rawPersonality is String &&
@@ -697,8 +828,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                 .where((e) => e.isNotEmpty)
                                 .toList();
                           } else {
-                            final temperament =
-                                widget.pet['temperament']?.toString();
+                            final temperament = _pet['temperament']?.toString();
                             if (temperament != null &&
                                 temperament.trim().isNotEmpty) {
                               personalityList = temperament
@@ -715,13 +845,11 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                           return Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: personalityList.map(
-                              (personality) {
-                                return _buildPersonalityChip(
-                                  personality.toString(),
-                                );
-                              },
-                            ).toList(),
+                            children: personalityList.map((personality) {
+                              return _buildPersonalityChip(
+                                personality.toString(),
+                              );
+                            }).toList(),
                           );
                         },
                       ),
@@ -741,12 +869,14 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       const SizedBox(height: 9),
 
                       Text(
-                        (widget.pet['about'] ??
-                                widget.pet['description'] ??
-                                'Rescued and cared for by shelter.')
+                        (_pet['about'] ??
+                                _pet['description'] ??
+                                'Rescue background not provided.')
                             .toString(),
                         style: TextStyle(
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF4B5E63),
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF4B5E63),
                           fontSize: 14,
                           height: 1.55,
                           fontWeight: FontWeight.w400,
@@ -777,7 +907,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 border: Border(
                   top: BorderSide(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE6EDF0),
+                    color: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFE6EDF0),
                     width: 1,
                   ),
                 ),
@@ -799,14 +931,14 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       children: [
                         Expanded(
                           child: _buildSecondaryButton(
-                            label: 'AR Preview',
+                            label: 'View in AR',
                             icon: Icons.view_in_ar_outlined,
                             isAR: true,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => ARViewScreen(pet: widget.pet),
+                                  builder: (_) => ARViewScreen(pet: _pet),
                                 ),
                               );
                             },
@@ -863,8 +995,14 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                             const SizedBox(width: 8),
                             Text(
                               isAvailable
-                                  ? 'Apply for Adoption (100% Free)'
-                                  : 'Adoption Pending',
+                                  ? 'Adopt Me'
+                                  : (_loadingPet
+                                        ? 'Loading...'
+                                        : _detailError != null
+                                        ? 'Details unavailable'
+                                        : rawStatus.toLowerCase() == 'adopted'
+                                        ? 'Already Adopted'
+                                        : 'Adoption Pending'),
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
@@ -898,10 +1036,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     final bool isDark = ThemeService.isDarkMode(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 12,
-        horizontal: 2,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -920,11 +1055,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
               color: isDark ? iconColor.withValues(alpha: 0.18) : iconBg,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 18, color: iconColor),
           ),
           const SizedBox(height: 7),
           Text(
@@ -978,10 +1109,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     final formattedValue = _formatTitleCase(value);
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF9FCFD),
         borderRadius: BorderRadius.circular(12),
@@ -1006,7 +1134,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF88989D),
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF88989D),
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1121,10 +1251,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: isDark
             ? tealColor.withValues(alpha: 0.18)
@@ -1149,9 +1276,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
           Text(
             text,
             style: TextStyle(
-              color: isDark
-                  ? const Color(0xFF2DD4BF)
-                  : const Color(0xFF134E48),
+              color: isDark ? const Color(0xFF2DD4BF) : const Color(0xFF134E48),
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
             ),
@@ -1168,16 +1293,11 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
   Widget _buildShelterCard(BuildContext context) {
     final bool isDark = ThemeService.isDarkMode(context);
 
-    final shelterName = (widget.pet['shelter'] ??
-            'JAGNA ANIMAL LOVER AND RESCUE GROUP')
-        .toString();
+    final shelterName = (_pet['shelter'] ?? 'Shelter not provided').toString();
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1186,57 +1306,81 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
           width: 1,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? tealColor.withValues(alpha: 0.18)
-                  : const Color(0xFFE9F7F6),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.home_work_outlined,
-              size: 22,
-              color: isDark ? const Color(0xFF2DD4BF) : tealColor,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              shelterName.toUpperCase(),
-              style: TextStyle(
-                color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF425257),
-                fontSize: 11.5,
-                fontWeight: FontWeight.bold,
-                height: 1.3,
-              ),
-            ),
-          ),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(30),
-              onTap: () => _callShelter(context),
-              child: Container(
-                width: 40,
-                height: 40,
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.transparent,
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFDCE7EA),
-                  ),
+                  color: isDark
+                      ? tealColor.withValues(alpha: 0.18)
+                      : const Color(0xFFE9F7F6),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.phone_outlined,
-                  size: 18,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6D7B7F),
+                  Icons.home_work_outlined,
+                  size: 22,
+                  color: isDark ? const Color(0xFF2DD4BF) : tealColor,
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  [shelterName, _pet['shelterAddress'], _pet['shelterPhone']]
+                      .where(
+                        (value) =>
+                            value != null && value.toString().trim().isNotEmpty,
+                      )
+                      .join('\n'),
+                  style: TextStyle(
+                    color: isDark
+                        ? const Color(0xFFF8FAFC)
+                        : const Color(0xFF425257),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: _chatOnMessenger,
+                icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                label: const Text('Chat on Messenger'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: tealColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _callShelter,
+                icon: const Icon(Icons.phone_outlined, size: 18),
+                label: const Text('Call Shelter'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isDark ? const Color(0xFF2DD4BF) : tealColor,
+                  side: BorderSide(
+                    color: isDark ? const Color(0xFF2DD4BF) : tealColor,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1257,17 +1401,17 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
 
     final Color bg = isDark
         ? (isAR
-            ? const Color(0xFFEA580C).withValues(alpha: 0.16)
-            : const Color(0xFF008F82).withValues(alpha: 0.16))
+              ? const Color(0xFFEA580C).withValues(alpha: 0.16)
+              : const Color(0xFF008F82).withValues(alpha: 0.16))
         : (isAR ? const Color(0xFFFFF7ED) : const Color(0xFFE6F9F5));
 
     final Color borderColor = isDark
         ? (isAR
-            ? const Color(0xFFF97316).withValues(alpha: 0.50)
-            : const Color(0xFF008F82).withValues(alpha: 0.50))
+              ? const Color(0xFFF97316).withValues(alpha: 0.50)
+              : const Color(0xFF008F82).withValues(alpha: 0.50))
         : (isAR
-            ? const Color(0xFFF97316).withValues(alpha: 0.55)
-            : const Color(0xFF008F82).withValues(alpha: 0.35));
+              ? const Color(0xFFF97316).withValues(alpha: 0.55)
+              : const Color(0xFF008F82).withValues(alpha: 0.35));
 
     final Color contentColor = isDark
         ? (isAR ? const Color(0xFFFB923C) : const Color(0xFF2DD4BF))
@@ -1283,26 +1427,24 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: borderColor,
-              width: 1.2,
-            ),
+            border: Border.all(color: borderColor, width: 1.2),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: contentColor,
-              ),
+              Icon(icon, size: 18, color: contentColor),
               const SizedBox(width: 7),
-              Text(
-                label,
-                style: TextStyle(
-                  color: contentColor,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: contentColor,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -1316,17 +1458,15 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
   // OPEN ADOPTION PROCESS
   // ============================================================
 
-  void _openAdoptionProcess(BuildContext context) {
-    showGeneralDialog(
+  Future<void> _openAdoptionProcess(BuildContext context) async {
+    await showGeneralDialog(
       context: context,
       barrierDismissible: false,
       barrierLabel: 'Adoption Application',
       barrierColor: Colors.black.withValues(alpha: 0.45),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return AdoptionProcessScreen(
-          pet: widget.pet,
-        );
+        return AdoptionProcessScreen(pet: _pet);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(
@@ -1337,12 +1477,16 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
         return FadeTransition(
           opacity: curvedAnimation,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 0.96, end: 1.0).animate(curvedAnimation),
+            scale: Tween<double>(
+              begin: 0.96,
+              end: 1.0,
+            ).animate(curvedAnimation),
             child: child,
           ),
         );
       },
     );
+    if (mounted) await _loadPet();
   }
 
   // ============================================================
@@ -1357,9 +1501,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.45),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return VisitAppointmentScreen(
-          pet: widget.pet,
-        );
+        return VisitAppointmentScreen(pet: _pet);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(
@@ -1370,7 +1512,10 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
         return FadeTransition(
           opacity: curvedAnimation,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 0.96, end: 1.0).animate(curvedAnimation),
+            scale: Tween<double>(
+              begin: 0.96,
+              end: 1.0,
+            ).animate(curvedAnimation),
             child: child,
           ),
         );
@@ -1386,10 +1531,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontSize: 14),
-        ),
+        content: Text(message, style: const TextStyle(fontSize: 14)),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),

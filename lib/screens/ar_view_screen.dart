@@ -5,16 +5,29 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import '../pet_data.dart';
+import '../ar_model_url.dart';
+import '../services/pet_service.dart';
+
+typedef ARModelBuilder =
+    Widget Function(BuildContext context, String modelUrl, bool studio);
+typedef ARSessionLauncher = Future<bool> Function();
 
 class ARViewScreen extends StatefulWidget {
   final Map<String, dynamic>? pet;
   final VoidCallback? onBack;
+  final PetService? petService;
+  final ARModelBuilder? modelBuilder;
+  final bool? cameraSupported;
+  final ARSessionLauncher? arSessionLauncher;
 
   const ARViewScreen({
     super.key,
     this.pet,
     this.onBack,
+    this.petService,
+    this.modelBuilder,
+    this.cameraSupported,
+    this.arSessionLauncher,
   });
 
   @override
@@ -31,6 +44,16 @@ class _ARViewScreenState extends State<ARViewScreen>
   static const Color darkBrown = Color(0xFF604A43);
   static const Color darkText = Color(0xFF24343A);
 
+  Map<String, dynamic>? _selectedPet;
+  List<Map<String, dynamic>> _availablePets = const [];
+  bool _loadingPets = false;
+  bool _petsError = false;
+  bool get _cameraSupported =>
+      widget.cameraSupported ??
+      (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS));
+
   // ============================================================
   // CAMERA STATE
   // ============================================================
@@ -40,13 +63,18 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   bool _cameraReady = false;
   bool _cameraError = false;
+  Future<Object> Function(String)? _runArJavaScript;
+  bool _arSessionLaunching = false;
 
   // ============================================================
   // AR SPATIAL PLACEMENT & GESTURE STATE
   // ============================================================
 
   bool _isPetPlaced = true;
-  Offset _petPosition = const Offset(0.5, 0.58); // Normalized viewport coordinates [0..1]
+  Offset _petPosition = const Offset(
+    0.5,
+    0.58,
+  ); // Normalized viewport coordinates [0..1]
   double _scale = 1.0; // Sizing factor (0.4 to 2.5)
 
   String _currentAction = 'Normal'; // 'Normal', 'Sit', 'Wag Tail', 'Speak'
@@ -68,14 +96,19 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   bool _isLifeScaleLocked = true;
-  double _viewingDistanceMeters = 1.5; // Default distance: 1.5 meters from floor
+  double _viewingDistanceMeters =
+      1.5; // Default distance: 1.5 meters from floor
 
   /// Physical shoulder height of the pet in centimeters.
   double get _realLifeHeightCm {
     final size = _petSize.toUpperCase();
     if (_petType == 'cat') return 25.0; // Domestic cat / kitten
-    if (size.contains('SMALL') || size.contains('TOY')) return 28.0; // Small dog (Shih Tzu, Chihuahua)
-    if (size.contains('LARGE') || size.contains('XL')) return 60.0; // Large dog (Labrador, Golden Retriever, Sky)
+    if (size.contains('SMALL') || size.contains('TOY')) {
+      return 28.0; // Small dog (Shih Tzu, Chihuahua)
+    }
+    if (size.contains('LARGE') || size.contains('XL')) {
+      return 60.0; // Large dog (Labrador, Golden Retriever, Sky)
+    }
     return 45.0; // Medium dog baseline (Standard Aspin)
   }
 
@@ -92,26 +125,15 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   Map<String, dynamic> get _resolvedPet {
-    if (widget.pet != null && widget.pet!.isNotEmpty) {
-      return widget.pet!;
-    }
-    if (PetData.pets.isNotEmpty) {
-      return PetData.pets.first;
-    }
-    return {
-      'name': 'Sky',
-      'breed': 'Labrador mix',
-      'type': 'dog',
-      'size': 'large',
-      'status': 'available',
-      'image_url': 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800',
-    };
+    return widget.pet ?? _selectedPet ?? const {};
   }
 
   String get _petName => _resolvedPet['name']?.toString() ?? 'Sky';
   String get _petBreed => _resolvedPet['breed']?.toString() ?? 'Rescue Pet';
-  String get _petType => (_resolvedPet['type']?.toString() ?? 'dog').toLowerCase();
-  String get _petSize => _resolvedPet['size']?.toString().toUpperCase() ?? 'MEDIUM';
+  String get _petType =>
+      (_resolvedPet['type']?.toString() ?? 'dog').toLowerCase();
+  String get _petSize =>
+      _resolvedPet['size']?.toString().toUpperCase() ?? 'MEDIUM';
   String get _petImageUrl {
     final direct = _resolvedPet['image_url']?.toString();
     if (direct != null && direct.isNotEmpty) return direct;
@@ -127,17 +149,9 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   bool _is3DStudioMode = false;
+  int _viewerReset = 0;
 
-  String get _modelGlbUrl {
-    final direct = _resolvedPet['model_url']?.toString();
-    if (direct != null && direct.isNotEmpty) return direct;
-    final isCat = _petType == 'cat' ||
-        (_resolvedPet['category']?.toString().toLowerCase() == 'cats');
-    if (isCat) {
-      return 'https://szdjfucozmsxqjvctptv.supabase.co/storage/v1/object/public/pet-photos/models/cat.glb';
-    }
-    return 'https://szdjfucozmsxqjvctptv.supabase.co/storage/v1/object/public/pet-photos/models/dog.glb';
-  }
+  String? get _modelGlbUrl => resolvePetModelUrl(_resolvedPet['model_url']);
 
   void _showArProjectionOptionsDialog() {
     showModalBottomSheet(
@@ -171,7 +185,11 @@ class _ARViewScreenState extends State<ARViewScreen>
                       color: const Color(0xFFE0F2F1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.view_in_ar, color: Color(0xFF008F82), size: 26),
+                    child: const Icon(
+                      Icons.view_in_ar,
+                      color: Color(0xFF008F82),
+                      size: 26,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -188,7 +206,10 @@ class _ARViewScreenState extends State<ARViewScreen>
                         ),
                         Text(
                           'View $_petName in physical space or 3D showroom',
-                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF757575)),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF757575),
+                          ),
                         ),
                       ],
                     ),
@@ -196,27 +217,39 @@ class _ARViewScreenState extends State<ARViewScreen>
                 ],
               ),
               const SizedBox(height: 18),
-              // Option 1: Universal Camera AR (Recommended)
+              // Camera mode uses a virtual room when a camera is unavailable.
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
                   setState(() {
                     _is3DStudioMode = false;
                     _isPetPlaced = true;
+                    _runArJavaScript = null;
                   });
-                  _showMessage('Universal Camera AR active. Point camera at floor to position $_petName.');
+                  _showMessage(
+                    _cameraReady
+                        ? 'Camera preview active. Drag to position $_petName.'
+                        : 'Virtual floor room active. Drag to position $_petName.',
+                  );
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF008F82), width: 1.6),
+                    border: Border.all(
+                      color: const Color(0xFF008F82),
+                      width: 1.6,
+                    ),
                     borderRadius: BorderRadius.circular(16),
                     color: const Color(0xFFF0FDF4),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFF008F82), size: 26),
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Color(0xFF008F82),
+                        size: 26,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -225,7 +258,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                             const Row(
                               children: [
                                 Text(
-                                  'Universal Camera AR',
+                                  'Camera preview',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14.5,
@@ -233,20 +266,15 @@ class _ARViewScreenState extends State<ARViewScreen>
                                   ),
                                 ),
                                 SizedBox(width: 6),
-                                Text(
-                                  '(100% Android Compatible)',
-                                  style: TextStyle(
-                                    color: Color(0xFF008F82),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
                               ],
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              'Live camera feed with real floor surface alignment and 1:1 life-scale. Works on all Android smartphones.',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                              'Overlay the 3D model on a camera preview or virtual floor room.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
                             ),
                           ],
                         ),
@@ -260,7 +288,10 @@ class _ARViewScreenState extends State<ARViewScreen>
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
-                  setState(() => _is3DStudioMode = true);
+                  setState(() {
+                    _is3DStudioMode = true;
+                    _runArJavaScript = null;
+                  });
                   _showMessage('Switched to 3D Inspection Studio.');
                 },
                 borderRadius: BorderRadius.circular(16),
@@ -273,7 +304,11 @@ class _ARViewScreenState extends State<ARViewScreen>
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.view_in_ar_rounded, color: Color(0xFF616161), size: 26),
+                      const Icon(
+                        Icons.view_in_ar_rounded,
+                        color: Color(0xFF616161),
+                        size: 26,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -290,7 +325,10 @@ class _ARViewScreenState extends State<ARViewScreen>
                             const SizedBox(height: 3),
                             Text(
                               'High-contrast 360° rotation booth for detailed inspection of fur textures and body build.',
-                              style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ],
                         ),
@@ -316,18 +354,52 @@ class _ARViewScreenState extends State<ARViewScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    _is3DStudioMode = !_cameraSupported;
+    if (widget.pet == null) {
+      _loadAvailablePets();
+    }
+
     _scale = _calculateLifeScale(_viewingDistanceMeters);
 
     // Initial camera startup
-    _initializeCamera();
+    if (_cameraSupported) {
+      _initializeCamera();
+    }
 
     // Start surface detection and gyro motion parallax
-    _initSensors();
+    if (_cameraSupported) {
+      _initSensors();
+    }
+  }
+
+  Future<void> _loadAvailablePets() async {
+    setState(() {
+      _loadingPets = true;
+      _petsError = false;
+    });
+    try {
+      final pets = await (widget.petService ?? PetService()).fetchPets(
+        status: 'available',
+        throwOnError: true,
+      );
+      if (!mounted) return;
+      setState(() {
+        _availablePets = pets;
+        _loadingPets = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingPets = false;
+        _petsError = true;
+      });
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _runArJavaScript = null;
     _accelerometerSubscription?.cancel();
     _gyroscopeSubscription?.cancel();
     final controller = _cameraController;
@@ -338,7 +410,8 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       if (_cameraController != null) {
         setState(() {
           _cameraReady = false;
@@ -347,7 +420,9 @@ class _ARViewScreenState extends State<ARViewScreen>
         _cameraController = null;
         controller?.dispose();
       }
-    } else if (state == AppLifecycleState.resumed) {
+    } else if (state == AppLifecycleState.resumed &&
+        _cameraSupported &&
+        !_is3DStudioMode) {
       _initializeCamera();
     }
   }
@@ -364,40 +439,34 @@ class _ARViewScreenState extends State<ARViewScreen>
     if (kIsWeb) return;
 
     try {
-      _accelerometerSubscription = accelerometerEventStream().listen(
-        (event) {
-          final norm = math.sqrt(event.x * event.x + event.z * event.z);
-          final pitchDegrees = (math.atan2(event.y, norm) * 180 / math.pi).abs();
+      _accelerometerSubscription = accelerometerEventStream().listen((event) {
+        final norm = math.sqrt(event.x * event.x + event.z * event.z);
+        final pitchDegrees = (math.atan2(event.y, norm) * 180 / math.pi).abs();
 
-          // Pitch between 18 and 78 degrees indicates pointing toward ground/floor
-          final bool detected = pitchDegrees >= 18.0 && pitchDegrees <= 78.0;
-          if (detected != _surfaceDetected && mounted) {
-            setState(() {
-              _surfaceDetected = detected;
-              _surfaceStatus = detected
-                  ? 'Floor Surface Detected (Ground Horizon Locked)'
-                  : 'Point camera toward floor to align surface';
-            });
-          }
-        },
-        onError: (_) {},
-      );
-
-      _gyroscopeSubscription = gyroscopeEventStream().listen(
-        (event) {
-          if (!_isGroundAnchored || !mounted) return;
-          // Apply counter-motion parallax displacement:
-          final dx = _gyroParallax.dx - (event.y * 0.0075);
-          final dy = _gyroParallax.dy + (event.x * 0.0075);
+        // Pitch between 18 and 78 degrees indicates pointing toward ground/floor
+        final bool detected = pitchDegrees >= 18.0 && pitchDegrees <= 78.0;
+        if (detected != _surfaceDetected && mounted) {
           setState(() {
-            _gyroParallax = Offset(
-              dx.clamp(-0.20, 0.20) * 0.985,
-              dy.clamp(-0.16, 0.16) * 0.985,
-            );
+            _surfaceDetected = detected;
+            _surfaceStatus = detected
+                ? 'Floor Surface Detected (Ground Horizon Locked)'
+                : 'Point camera toward floor to align surface';
           });
-        },
-        onError: (_) {},
-      );
+        }
+      }, onError: (_) {});
+
+      _gyroscopeSubscription = gyroscopeEventStream().listen((event) {
+        if (!_isGroundAnchored || !mounted) return;
+        // Apply counter-motion parallax displacement:
+        final dx = _gyroParallax.dx - (event.y * 0.0075);
+        final dy = _gyroParallax.dy + (event.x * 0.0075);
+        setState(() {
+          _gyroParallax = Offset(
+            dx.clamp(-0.20, 0.20) * 0.985,
+            dy.clamp(-0.16, 0.16) * 0.985,
+          );
+        });
+      }, onError: (_) {});
     } catch (e) {
       debugPrint('Sensor initialization error: $e');
     }
@@ -408,13 +477,7 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   Future<void> _initializeCamera() async {
-    if (kIsWeb) {
-      setState(() {
-        _cameraError = true;
-        _cameraReady = false;
-      });
-      return;
-    }
+    if (!_cameraSupported) return;
 
     try {
       final cameras = await availableCameras();
@@ -423,6 +486,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         setState(() {
           _cameraError = true;
           _cameraReady = false;
+          _is3DStudioMode = true;
         });
         return;
       }
@@ -451,11 +515,14 @@ class _ARViewScreenState extends State<ARViewScreen>
         _cameraError = false;
       });
     } catch (e) {
-      debugPrint('Camera initialization error (using AR Virtual Room fallback): $e');
+      debugPrint(
+        'Camera initialization error (using AR Virtual Room fallback): $e',
+      );
       if (!mounted) return;
       setState(() {
         _cameraError = true;
         _cameraReady = false;
+        _is3DStudioMode = true;
       });
     }
   }
@@ -489,6 +556,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   void _resetAR() {
     setState(() {
+      _viewerReset++;
       _petPosition = const Offset(0.5, 0.58);
       _isLifeScaleLocked = true;
       _viewingDistanceMeters = 1.5;
@@ -496,7 +564,11 @@ class _ARViewScreenState extends State<ARViewScreen>
       _currentAction = 'Normal';
       _showSpeechBubble = false;
     });
-    _showMessage('AR view reset to default 1:1 scale placement.');
+    _showMessage(
+      _is3DStudioMode
+          ? '3D turntable reset.'
+          : 'AR view reset to default scale placement.',
+    );
   }
 
   void _togglePlacement() {
@@ -504,18 +576,171 @@ class _ARViewScreenState extends State<ARViewScreen>
       _isPetPlaced = !_isPetPlaced;
     });
     if (_isPetPlaced) {
-      _showMessage('$_petName placed in your surroundings. Drag handle to move.');
+      _showMessage(
+        '$_petName placed in your surroundings. Drag handle to move.',
+      );
     } else {
       _showMessage('Aim reticle at a flat surface and tap to place $_petName.');
     }
+  }
+
+  Future<void> _onCameraShutter() async {
+    if (_arSessionLaunching) return;
+    if (!_cameraSupported && widget.arSessionLauncher == null) {
+      _togglePlacement();
+      return;
+    }
+
+    setState(() => _arSessionLaunching = true);
+    try {
+      final launcher = widget.arSessionLauncher;
+      final launched = launcher != null
+          ? await launcher()
+          : await _launchModelViewerAR();
+      if (!mounted) return;
+      if (!launched) {
+        _showMessage(
+          'Camera AR is unavailable or still loading. Use the virtual floor or try again.',
+        );
+      }
+    } catch (error) {
+      debugPrint('Could not start native AR: $error');
+      if (!mounted) return;
+      _showMessage(
+        'Could not start Camera AR. Use the virtual floor or try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _arSessionLaunching = false);
+    }
+  }
+
+  Future<bool> _launchModelViewerAR() async {
+    final runJavaScript = _runArJavaScript;
+    if (runJavaScript == null) return false;
+    final result = await runJavaScript('''
+      (() => {
+        const viewer = document.querySelector('model-viewer');
+        if (!viewer || !viewer.canActivateAR) return false;
+        viewer.activateAR();
+        return true;
+      })()
+    ''');
+    return result == true || result.toString() == 'true';
   }
 
   // ============================================================
   // BUILD
   // ============================================================
 
+  Widget _buildPetPicker() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('AR View'),
+        leading: BackButton(onPressed: _handleBack),
+      ),
+      body: _loadingPets
+          ? const Center(child: CircularProgressIndicator())
+          : _petsError
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Could not load pets. Please try again.'),
+                  TextButton(
+                    onPressed: _loadAvailablePets,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : _availablePets.isEmpty
+          ? const Center(
+              child: Text('No adoptable pets are available right now.'),
+            )
+          : ListView.builder(
+              itemCount: _availablePets.length,
+              itemBuilder: (context, index) {
+                final pet = _availablePets[index];
+                final hasModel = resolvePetModelUrl(pet['model_url']) != null;
+                return ListTile(
+                  key: ValueKey('ar-pet-${pet['id']}'),
+                  leading: const Icon(Icons.pets),
+                  title: Text(pet['name']?.toString() ?? 'Unnamed pet'),
+                  subtitle: Text(
+                    hasModel
+                        ? 'View interactive 3D model'
+                        : '3D model unavailable',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => setState(() => _selectedPet = pet),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _buildModel({required bool studio}) {
+    final url = _modelGlbUrl!;
+    if (widget.modelBuilder != null) {
+      return widget.modelBuilder!(context, url, studio);
+    }
+    return ModelViewer(
+      key: ValueKey(
+        '${url}_${studio ? 'studio' : 'camera'}_$_currentAction'
+        '_${_viewerReset}_${studio ? _scale : 1}',
+      ),
+      src: url,
+      alt: '3D model of $_petName',
+      ar: !studio,
+      arModes: const ['scene-viewer', 'quick-look', 'webxr'],
+      arPlacement: ArPlacement.floor,
+      arScale: ArScale.fixed,
+      onWebViewCreated: studio
+          ? null
+          : (controller) {
+              _runArJavaScript = controller.runJavaScriptReturningResult;
+            },
+      autoRotate: studio,
+      cameraControls: true,
+      autoPlay: true,
+      animationName: _currentAction == 'Sit' ? 'sit' : 'idle',
+      backgroundColor: studio ? const Color(0xFF1E2833) : Colors.transparent,
+      shadowIntensity: 0.85,
+      shadowSoftness: 0.9,
+      cameraOrbit: studio
+          ? '0deg 75deg ${(105 / _scale).clamp(40, 260).toStringAsFixed(0)}%'
+          : '0deg 75deg 105%',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.pet == null && _selectedPet == null) {
+      return _buildPetPicker();
+    }
+    if (_modelGlbUrl == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(_resolvedPet['name']?.toString() ?? 'AR View'),
+          leading: BackButton(onPressed: _handleBack),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.view_in_ar_outlined, size: 56),
+              const SizedBox(height: 12),
+              const Text('No 3D model is available for this pet yet.'),
+              if (widget.pet == null)
+                TextButton(
+                  onPressed: () => setState(() => _selectedPet = null),
+                  child: const Text('Choose another pet'),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
     final media = MediaQuery.of(context);
     final size = media.size;
 
@@ -541,8 +766,16 @@ class _ARViewScreenState extends State<ARViewScreen>
                         behavior: HitTestBehavior.translucent,
                         onTapUp: (details) {
                           // Tap anywhere on the floor to position pet
-                          final tappedX = (details.localPosition.dx / size.width).clamp(0.10, 0.90);
-                          final tappedY = (details.localPosition.dy / size.height).clamp(0.20, 0.85);
+                          final tappedX =
+                              (details.localPosition.dx / size.width).clamp(
+                                0.10,
+                                0.90,
+                              );
+                          final tappedY =
+                              (details.localPosition.dy / size.height).clamp(
+                                0.20,
+                                0.85,
+                              );
                           setState(() {
                             _petPosition = Offset(tappedX, tappedY);
                             _isPetPlaced = true;
@@ -558,18 +791,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                     Positioned.fill(
                       child: Container(
                         color: const Color(0xFF1E2833),
-                        child: ModelViewer(
-                          key: ValueKey('${_modelGlbUrl}_studio_$_currentAction'),
-                          src: _modelGlbUrl,
-                          alt: '3D model of $_petName',
-                          ar: false,
-                          autoRotate: true,
-                          cameraControls: true,
-                          autoPlay: true,
-                          animationName: _currentAction == 'Sit' ? 'sit' : 'idle',
-                          backgroundColor: const Color(0xFF1E2833),
-                          shadowIntensity: 0.85,
-                        ),
+                        child: _buildModel(studio: true),
                       ),
                     ),
 
@@ -581,30 +803,46 @@ class _ARViewScreenState extends State<ARViewScreen>
                       right: 0,
                       child: Center(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF00E5D0), width: 1.2),
+                            border: Border.all(
+                              color: const Color(0xFF00E5D0),
+                              width: 1.2,
+                            ),
                           ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.touch_app_rounded, color: Color(0xFF00E5D0), size: 16),
-                              SizedBox(width: 8),
-                              Text(
-                                'Aim at floor & tap surface or shutter to place pet',
-                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.touch_app_rounded,
+                                  color: Color(0xFF00E5D0),
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Aim at floor & tap surface or shutter to place pet',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
 
                   // 2. Interactive 3D Pet Spatial Canvas (only in camera mode)
-                  if (!_is3DStudioMode)
-                    _buildInteractiveSpatialCanvas(size),
+                  if (!_is3DStudioMode) _buildInteractiveSpatialCanvas(size),
 
                   // 3. Top Header Bar (Back, Mode Tabs, Options)
                   Positioned(
@@ -622,8 +860,8 @@ class _ARViewScreenState extends State<ARViewScreen>
                     child: _buildSurfaceStatusBanner(),
                   ),
 
-                  // 3.7 Distance Selector (when 1:1 Life Scale is locked and in Camera AR)
-                  if (!_is3DStudioMode && _isLifeScaleLocked)
+                  // Distance calibration remains available in both views.
+                  if (_is3DStudioMode || _isLifeScaleLocked)
                     Positioned(
                       top: 114,
                       left: 16,
@@ -631,13 +869,20 @@ class _ARViewScreenState extends State<ARViewScreen>
                       child: _buildDistanceSelector(),
                     ),
 
-                  // 4. Right Side Toolbar (Scale Lock, Move, Resize, Reset) - only in camera mode
-                  if (!_is3DStudioMode)
+                  if (_is3DStudioMode)
                     Positioned(
-                      right: 14,
-                      bottom: 230,
-                      child: _buildRightControls(),
+                      top: 162,
+                      left: 16,
+                      right: 16,
+                      child: Center(child: _buildStudioScaleIndicator()),
                     ),
+
+                  // Scale, reset, snapshot, and help remain available in both views.
+                  Positioned(
+                    right: 14,
+                    bottom: 230,
+                    child: _buildRightControls(),
+                  ),
 
                   // 5. Behavior Action Pills (Sit, Wag Tail, Speak)
                   Positioned(
@@ -676,7 +921,10 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   Widget _buildCameraOrFallback(Size size) {
-    if (!_cameraError && _cameraReady && _cameraController != null && _cameraController!.value.isInitialized) {
+    if (!_cameraError &&
+        _cameraReady &&
+        _cameraController != null &&
+        _cameraController!.value.isInitialized) {
       return ClipRect(
         child: OverflowBox(
           alignment: Alignment.center,
@@ -702,11 +950,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF2C3E50),
-            Color(0xFF1E2833),
-            Color(0xFF141920),
-          ],
+          colors: [Color(0xFF2C3E50), Color(0xFF1E2833), Color(0xFF141920)],
         ),
       ),
       child: Stack(
@@ -737,9 +981,7 @@ class _ARViewScreenState extends State<ARViewScreen>
             left: 0,
             right: 0,
             bottom: 0,
-            child: CustomPaint(
-              painter: _FloorPerspectivePainter(),
-            ),
+            child: CustomPaint(painter: _FloorPerspectivePainter()),
           ),
         ],
       ),
@@ -761,12 +1003,20 @@ class _ARViewScreenState extends State<ARViewScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: (_surfaceDetected ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C)).withValues(alpha: 0.85),
+                color:
+                    (_surfaceDetected
+                            ? const Color(0xFF00E5D0)
+                            : const Color(0xFFFFA65C))
+                        .withValues(alpha: 0.85),
                 width: 2.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: (_surfaceDetected ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C)).withValues(alpha: 0.3),
+                  color:
+                      (_surfaceDetected
+                              ? const Color(0xFF00E5D0)
+                              : const Color(0xFFFFA65C))
+                          .withValues(alpha: 0.3),
                   blurRadius: 16,
                   spreadRadius: 2,
                 ),
@@ -777,7 +1027,9 @@ class _ARViewScreenState extends State<ARViewScreen>
                 width: 16,
                 height: 16,
                 decoration: BoxDecoration(
-                  color: _surfaceDetected ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C),
+                  color: _surfaceDetected
+                      ? const Color(0xFF00E5D0)
+                      : const Color(0xFFFFA65C),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -791,8 +1043,16 @@ class _ARViewScreenState extends State<ARViewScreen>
     final viewportH = (340.0 * _scale).clamp(200.0, size.height * 0.70);
 
     // Position calculations with ground parallax anchoring
-    final effectiveX = (_petPosition.dx + (_isGroundAnchored ? _gyroParallax.dx : 0.0)).clamp(0.05, 0.95);
-    final effectiveY = (_petPosition.dy + (_isGroundAnchored ? _gyroParallax.dy : 0.0)).clamp(0.15, 0.90);
+    final effectiveX =
+        (_petPosition.dx + (_isGroundAnchored ? _gyroParallax.dx : 0.0)).clamp(
+          0.05,
+          0.95,
+        );
+    final effectiveY =
+        (_petPosition.dy + (_isGroundAnchored ? _gyroParallax.dy : 0.0)).clamp(
+          0.15,
+          0.90,
+        );
 
     // Mathematically centered horizontally on screen
     final petX = (effectiveX * size.width) - (viewportW / 2);
@@ -829,20 +1089,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                 ),
 
                 // Rigged 3D GLB Model
-                ModelViewer(
-                  key: ValueKey('${_modelGlbUrl}_ar_$_currentAction'),
-                  src: _modelGlbUrl,
-                  alt: '3D model of $_petName',
-                  ar: false,
-                  autoRotate: false,
-                  cameraControls: true,
-                  autoPlay: true,
-                  animationName: _currentAction == 'Sit' ? 'sit' : 'idle',
-                  backgroundColor: Colors.transparent,
-                  shadowIntensity: 0.85,
-                  shadowSoftness: 0.9,
-                  cameraOrbit: '0deg 75deg 105%',
-                ),
+                _buildModel(studio: false),
 
                 // Floating Drag Handle
                 Positioned(
@@ -850,13 +1097,21 @@ class _ARViewScreenState extends State<ARViewScreen>
                   child: GestureDetector(
                     onPanUpdate: (details) {
                       setState(() {
-                        final newDx = _petPosition.dx + (details.delta.dx / size.width);
-                        final newDy = _petPosition.dy + (details.delta.dy / size.height);
-                        _petPosition = Offset(newDx.clamp(0.1, 0.9), newDy.clamp(0.2, 0.85));
+                        final newDx =
+                            _petPosition.dx + (details.delta.dx / size.width);
+                        final newDy =
+                            _petPosition.dy + (details.delta.dy / size.height);
+                        _petPosition = Offset(
+                          newDx.clamp(0.1, 0.9),
+                          newDy.clamp(0.2, 0.85),
+                        );
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.65),
                         borderRadius: BorderRadius.circular(12),
@@ -905,21 +1160,24 @@ class _ARViewScreenState extends State<ARViewScreen>
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.straighten, color: Colors.white, size: 12),
-          const SizedBox(width: 5),
-          Text(
-            'Height: $heightCm cm ($heightIn in) • 1:1 Life Scale',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10.5,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.straighten, color: Colors.white, size: 12),
+            const SizedBox(width: 5),
+            Text(
+              'Height: $heightCm cm ($heightIn in) • 1:1 Life Scale',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.2,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -960,7 +1218,9 @@ class _ARViewScreenState extends State<ARViewScreen>
       width: shadowWidth,
       height: shadowHeight,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.all(Radius.elliptical(shadowWidth / 2, shadowHeight / 2)),
+        borderRadius: BorderRadius.all(
+          Radius.elliptical(shadowWidth / 2, shadowHeight / 2),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.45),
@@ -981,10 +1241,7 @@ class _ARViewScreenState extends State<ARViewScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _roundButton(
-          icon: Icons.arrow_back,
-          onTap: _handleBack,
-        ),
+        _roundButton(icon: Icons.arrow_back, onTap: _handleBack),
 
         // Mode switch tabs: Camera AR vs 3D Studio
         Container(
@@ -1008,8 +1265,15 @@ class _ARViewScreenState extends State<ARViewScreen>
                 icon: Icons.camera_alt_outlined,
                 isSelected: !_is3DStudioMode,
                 onTap: () {
-                  setState(() => _is3DStudioMode = false);
-                  _showMessage('Switched to Live Camera AR View');
+                  setState(() {
+                    _is3DStudioMode = false;
+                    _runArJavaScript = null;
+                  });
+                  _showMessage(
+                    _cameraReady
+                        ? 'Switched to camera preview'
+                        : 'Switched to virtual floor room',
+                  );
                 },
               ),
               _buildModeTab(
@@ -1017,7 +1281,10 @@ class _ARViewScreenState extends State<ARViewScreen>
                 icon: Icons.view_in_ar_rounded,
                 isSelected: _is3DStudioMode,
                 onTap: () {
-                  setState(() => _is3DStudioMode = true);
+                  setState(() {
+                    _is3DStudioMode = true;
+                    _runArJavaScript = null;
+                  });
                   _showMessage('Switched to Interactive 3D Model Studio');
                 },
               ),
@@ -1055,11 +1322,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? Colors.white : darkText,
-            ),
+            Icon(icon, size: 14, color: isSelected ? Colors.white : darkText),
             const SizedBox(width: 4),
             Text(
               title,
@@ -1082,8 +1345,10 @@ class _ARViewScreenState extends State<ARViewScreen>
   Widget _buildSurfaceStatusBanner() {
     final statusText = _is3DStudioMode
         ? '3D Interactive Studio • 360° Inspection & Rigged Animations'
+        : !_cameraReady
+        ? 'Virtual floor room • drag to position the model'
         : _surfaceStatus;
-    final isDetected = _is3DStudioMode ? true : _surfaceDetected;
+    final isDetected = _is3DStudioMode || !_cameraReady || _surfaceDetected;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -1096,10 +1361,7 @@ class _ARViewScreenState extends State<ARViewScreen>
           width: 1.2,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 8),
         ],
       ),
       child: Row(
@@ -1108,9 +1370,15 @@ class _ARViewScreenState extends State<ARViewScreen>
           Icon(
             _is3DStudioMode
                 ? Icons.view_in_ar_rounded
-                : (_surfaceDetected ? Icons.check_circle_rounded : Icons.search_rounded),
+                : !_cameraReady
+                ? Icons.grid_on_rounded
+                : (_surfaceDetected
+                      ? Icons.check_circle_rounded
+                      : Icons.search_rounded),
             size: 15,
-            color: isDetected ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C),
+            color: isDetected
+                ? const Color(0xFF00E5D0)
+                : const Color(0xFFFFA65C),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1126,7 +1394,7 @@ class _ARViewScreenState extends State<ARViewScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (!_is3DStudioMode && _surfaceDetected) ...[
+          if (!_is3DStudioMode && _cameraReady && _surfaceDetected) ...[
             const SizedBox(width: 8),
             GestureDetector(
               onTap: () {
@@ -1134,14 +1402,18 @@ class _ARViewScreenState extends State<ARViewScreen>
                   _isGroundAnchored = !_isGroundAnchored;
                   _gyroParallax = Offset.zero;
                 });
-                _showMessage(_isGroundAnchored
-                    ? 'Floor surface locked. Pet stays fixed on ground.'
-                    : 'Floor lock off (free-floating).');
+                _showMessage(
+                  _isGroundAnchored
+                      ? 'Floor surface locked. Pet stays fixed on ground.'
+                      : 'Floor lock off (free-floating).',
+                );
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _isGroundAnchored ? const Color(0xFF008F82) : Colors.white24,
+                  color: _isGroundAnchored
+                      ? const Color(0xFF008F82)
+                      : Colors.white24,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1172,35 +1444,55 @@ class _ARViewScreenState extends State<ARViewScreen>
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white24, width: 0.8),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.straighten, size: 13, color: Color(0xFF00E5D0)),
-              SizedBox(width: 6),
-              Text(
-                'Distance:',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.straighten, size: 13, color: Color(0xFF00E5D0)),
+                SizedBox(width: 6),
+                Text(
+                  'Distance:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _distanceChip(1.0, '1.0m Close'),
-              const SizedBox(width: 4),
-              _distanceChip(1.5, '1.5m Floor'),
-              const SizedBox(width: 4),
-              _distanceChip(2.0, '2.0m Room'),
-            ],
-          ),
-        ],
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _distanceChip(1.0, '1.0m Close'),
+                const SizedBox(width: 4),
+                _distanceChip(1.5, '1.5m Floor'),
+                const SizedBox(width: 4),
+                _distanceChip(2.0, '2.0m Room'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStudioScaleIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.70),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        'Viewing scale: ${(_scale * 100).round()}% • Estimated shoulder height: '
+        '${_realLifeHeightCm.toStringAsFixed(0)} cm',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.white, fontSize: 11),
       ),
     );
   }
@@ -1214,7 +1506,9 @@ class _ARViewScreenState extends State<ARViewScreen>
           _isLifeScaleLocked = true;
           _scale = _calculateLifeScale(dist);
         });
-        _showMessage('Set to $label: $_petName is calibrated at ${_realLifeHeightCm.toStringAsFixed(0)} cm life-scale.');
+        _showMessage(
+          'Set to $label: $_petName is calibrated at ${_realLifeHeightCm.toStringAsFixed(0)} cm life-scale.',
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1239,16 +1533,23 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   Future<void> _takeSnapshot() async {
-    if (_cameraController != null && _cameraController!.value.isInitialized) {
-      try {
-        await _cameraController!.takePicture();
-        _showMessage('AR Photo captured. $_petName placed in your room.');
-      } catch (e) {
-        _showMessage('Snapshot captured. $_petName in room.');
-      }
-    } else {
-      _showMessage('Snapshot captured. $_petName in room.');
-    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Capture this view'),
+        content: const Text(
+          'Use your device or browser screenshot shortcut to save the 3D view. '
+          'The model viewer cannot export its WebGL canvas through this button.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildRightControls() {
@@ -1257,8 +1558,12 @@ class _ARViewScreenState extends State<ARViewScreen>
         // 1:1 Life Size Mode Button
         _roundButton(
           icon: Icons.straighten,
-          tooltip: _isLifeScaleLocked ? '1:1 Life Size: LOCKED' : '1:1 Life Size: OFF',
-          backgroundColor: _isLifeScaleLocked ? const Color(0xFF008F82) : Colors.white,
+          tooltip: _isLifeScaleLocked
+              ? '1:1 Life Size: LOCKED'
+              : '1:1 Life Size: OFF',
+          backgroundColor: _isLifeScaleLocked
+              ? const Color(0xFF008F82)
+              : Colors.white,
           iconColor: _isLifeScaleLocked ? Colors.white : darkBrown,
           onTap: () {
             setState(() {
@@ -1267,28 +1572,37 @@ class _ARViewScreenState extends State<ARViewScreen>
                 _scale = _calculateLifeScale(_viewingDistanceMeters);
               }
             });
-            _showMessage(_isLifeScaleLocked
-                ? '1:1 Life Size locked: ${_realLifeHeightCm.toStringAsFixed(0)} cm true scale.'
-                : 'Manual scaling enabled.');
+            _showMessage(
+              _isLifeScaleLocked
+                  ? '1:1 Life Size locked: ${_realLifeHeightCm.toStringAsFixed(0)} cm true scale.'
+                  : 'Manual scaling enabled.',
+            );
           },
         ),
         const SizedBox(height: 10),
-        _roundButton(
-          icon: _isGroundAnchored ? Icons.anchor : Icons.anchor_outlined,
-          tooltip: _isGroundAnchored ? 'Floor Anchor: ON' : 'Floor Anchor: OFF',
-          backgroundColor: _isGroundAnchored ? const Color(0xFF008F82) : Colors.white,
-          iconColor: _isGroundAnchored ? Colors.white : darkBrown,
-          onTap: () {
-            setState(() {
-              _isGroundAnchored = !_isGroundAnchored;
-              _gyroParallax = Offset.zero;
-            });
-            _showMessage(_isGroundAnchored
-                ? 'Floor surface lock enabled.'
-                : 'Free-floating mode enabled.');
-          },
-        ),
-        const SizedBox(height: 10),
+        if (!_is3DStudioMode)
+          _roundButton(
+            icon: _isGroundAnchored ? Icons.anchor : Icons.anchor_outlined,
+            tooltip: _isGroundAnchored
+                ? 'Floor Anchor: ON'
+                : 'Floor Anchor: OFF',
+            backgroundColor: _isGroundAnchored
+                ? const Color(0xFF008F82)
+                : Colors.white,
+            iconColor: _isGroundAnchored ? Colors.white : darkBrown,
+            onTap: () {
+              setState(() {
+                _isGroundAnchored = !_isGroundAnchored;
+                _gyroParallax = Offset.zero;
+              });
+              _showMessage(
+                _isGroundAnchored
+                    ? 'Floor surface lock enabled.'
+                    : 'Free-floating mode enabled.',
+              );
+            },
+          ),
+        if (!_is3DStudioMode) const SizedBox(height: 10),
         _roundButton(
           icon: Icons.refresh,
           tooltip: 'Reset AR Position',
@@ -1321,7 +1635,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         const SizedBox(height: 10),
         _roundButton(
           icon: Icons.camera_alt,
-          tooltip: 'Capture AR Photo',
+          tooltip: 'Snapshot options',
           backgroundColor: const Color(0xFF008F82),
           iconColor: Colors.white,
           onTap: _takeSnapshot,
@@ -1380,7 +1694,9 @@ class _ARViewScreenState extends State<ARViewScreen>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? primaryColor : Colors.white.withValues(alpha: 0.90),
+          color: isSelected
+              ? primaryColor
+              : Colors.white.withValues(alpha: 0.90),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1393,11 +1709,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 15,
-              color: isSelected ? Colors.white : darkBrown,
-            ),
+            Icon(icon, size: 15, color: isSelected ? Colors.white : darkBrown),
             const SizedBox(width: 6),
             Text(
               label,
@@ -1443,7 +1755,8 @@ class _ARViewScreenState extends State<ARViewScreen>
                   ? Image.network(
                       _petImageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildThumbFallback(),
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildThumbFallback(),
                     )
                   : _buildThumbFallback(),
             ),
@@ -1475,7 +1788,9 @@ class _ARViewScreenState extends State<ARViewScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: _isPetPlaced ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+              color: _isPetPlaced
+                  ? const Color(0xFFE8F5E9)
+                  : const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1484,13 +1799,17 @@ class _ARViewScreenState extends State<ARViewScreen>
                 Icon(
                   _isPetPlaced ? Icons.check_circle : Icons.touch_app,
                   size: 13,
-                  color: _isPetPlaced ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                  color: _isPetPlaced
+                      ? const Color(0xFF2E7D32)
+                      : const Color(0xFFE65100),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _isPetPlaced ? 'Placed' : 'Tap to Place',
                   style: TextStyle(
-                    color: _isPetPlaced ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                    color: _isPetPlaced
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFFE65100),
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1506,11 +1825,7 @@ class _ARViewScreenState extends State<ARViewScreen>
   Widget _buildThumbFallback() {
     return Container(
       color: const Color(0xFFE0E0E0),
-      child: const Icon(
-        Icons.pets,
-        color: Color(0xFF757575),
-        size: 26,
-      ),
+      child: const Icon(Icons.pets, color: Color(0xFF757575), size: 26),
     );
   }
 
@@ -1522,16 +1837,10 @@ class _ARViewScreenState extends State<ARViewScreen>
     if (_is3DStudioMode) {
       return Center(
         child: ElevatedButton.icon(
-          onPressed: () {
-            setState(() {
-              _is3DStudioMode = false;
-              _isPetPlaced = true;
-            });
-            _showMessage('Switched to Camera AR. $_petName is placed on your floor.');
-          },
-          icon: const Icon(Icons.view_in_ar, color: Colors.white, size: 20),
+          onPressed: _resetAR,
+          icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
           label: const Text(
-            'Project on Real Floor (Camera AR)',
+            'Reset Turntable',
             style: TextStyle(
               color: Colors.white,
               fontSize: 13.5,
@@ -1554,17 +1863,15 @@ class _ARViewScreenState extends State<ARViewScreen>
 
     return Center(
       child: GestureDetector(
-        onTap: _togglePlacement,
+        key: const ValueKey('camera-ar-shutter'),
+        onTap: _arSessionLaunching ? null : _onCameraShutter,
         child: Container(
           width: 62,
           height: 62,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
-            border: Border.all(
-              color: Colors.white,
-              width: 4,
-            ),
+            border: Border.all(color: Colors.white, width: 4),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.25),
@@ -1615,11 +1922,7 @@ class _ARViewScreenState extends State<ARViewScreen>
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: iconColor ?? darkBrown,
-          ),
+          child: Icon(icon, size: 20, color: iconColor ?? darkBrown),
         ),
       ),
     );
@@ -1643,10 +1946,7 @@ class _ARViewScreenState extends State<ARViewScreen>
               SizedBox(width: 8),
               Text(
                 'How to use AR View',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -1654,19 +1954,40 @@ class _ARViewScreenState extends State<ARViewScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHelpRow(Icons.touch_app, 'Tap anywhere on your floor to position $_petName instantly.'),
+              _buildHelpRow(
+                Icons.touch_app,
+                'Tap anywhere on your floor to position $_petName instantly.',
+              ),
               const SizedBox(height: 10),
-              _buildHelpRow(Icons.open_with, 'Use the "Drag to Move" handle beneath the pet to slide across the room.'),
+              _buildHelpRow(
+                Icons.open_with,
+                'Use the "Drag to Move" handle beneath the pet to slide across the room.',
+              ),
               const SizedBox(height: 10),
-              _buildHelpRow(Icons.straighten, 'Tap 1:1 Life Size on the right to lock accurate physical dimensions (cm/inches).'),
+              _buildHelpRow(
+                Icons.straighten,
+                'Tap 1:1 Life Size on the right to lock accurate physical dimensions (cm/inches).',
+              ),
               const SizedBox(height: 10),
-              _buildHelpRow(Icons.pin_drop, 'Select distance (1.0m, 1.5m, 2.0m) to calibrate perspective depth.'),
+              _buildHelpRow(
+                Icons.pin_drop,
+                'Select distance (1.0m, 1.5m, 2.0m) to calibrate perspective depth.',
+              ),
               const SizedBox(height: 10),
-              _buildHelpRow(Icons.camera_alt, 'Tap the camera button on the right to capture an AR photo of $_petName in your room.'),
+              _buildHelpRow(
+                Icons.camera_alt,
+                'Tap the snapshot button for instructions to save this view with your device or browser.',
+              ),
               const SizedBox(height: 10),
-              _buildHelpRow(Icons.pets, 'Tap Sit, Wag Tail, or Speak to trigger real-time reactions.'),
+              _buildHelpRow(
+                Icons.pets,
+                'Tap Sit, Wag Tail, or Speak to trigger real-time reactions.',
+              ),
               const SizedBox(height: 10),
-              _buildHelpRow(Icons.refresh, 'Tap Reset to return $_petName to the center with 1:1 life-scale.'),
+              _buildHelpRow(
+                Icons.refresh,
+                'Tap Reset to return $_petName to the center with 1:1 life-scale.',
+              ),
             ],
           ),
           actions: [
@@ -1693,10 +2014,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         Icon(icon, size: 18, color: const Color(0xFF078F80)),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13, height: 1.4),
-          ),
+          child: Text(text, style: const TextStyle(fontSize: 13, height: 1.4)),
         ),
       ],
     );
@@ -1707,16 +2025,11 @@ class _ARViewScreenState extends State<ARViewScreen>
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontSize: 13),
-        ),
+        content: Text(message, style: const TextStyle(fontSize: 13)),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -1749,7 +2062,11 @@ class _FloorPerspectivePainter extends CustomPainter {
     final vanishingX = size.width / 2;
     const vanishingY = -60.0;
 
-    for (double x = -size.width * 0.4; x <= size.width * 1.4; x += size.width * 0.15) {
+    for (
+      double x = -size.width * 0.4;
+      x <= size.width * 1.4;
+      x += size.width * 0.15
+    ) {
       canvas.drawLine(
         Offset(vanishingX, vanishingY),
         Offset(x, size.height),
@@ -1760,11 +2077,7 @@ class _FloorPerspectivePainter extends CustomPainter {
     // Horizontal perspective lines
     for (double i = 0.15; i < 1.0; i += 0.16) {
       final y = size.height * math.pow(i, 1.8);
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        linePaint,
-      );
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
     }
   }
 

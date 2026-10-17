@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../appointment_store.dart';
+import '../services/appointment_service.dart';
 import 'pets_screen.dart';
 
 class MyAppointmentsScreen extends StatefulWidget {
   final VoidCallback? onBrowsePets;
+  final AppointmentService? appointmentService;
 
   const MyAppointmentsScreen({
     super.key,
     this.onBrowsePets,
+    this.appointmentService,
   });
 
   @override
@@ -29,26 +32,34 @@ class _MyAppointmentsScreenState
   static const Color lightBlue = Color(0xFFE4F5FB);
   static const Color tealColor = Color(0xFF008F82);
 
+  bool _loading = true;
+  bool _loadFailed = false;
+
   @override
   void initState() {
     super.initState();
-    AppointmentStore.syncWithSupabase().then((_) {
-      if (mounted) setState(() {});
-    });
+    _refresh();
   }
 
   // ============================================================
   // REFRESH WHEN SCREEN OPENS
   // ============================================================
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    setState(() {});
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
+    try {
+      await AppointmentStore.syncWithSupabase(
+        service: widget.appointmentService, throwOnError: true,
+      );
+    } catch (_) {
+      if (mounted) _loadFailed = true;
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
-
-  // ============================================================
   // BUILD
   // ============================================================
 
@@ -88,13 +99,25 @@ class _MyAppointmentsScreenState
         ),
 
         centerTitle: true,
+        actions: [IconButton(
+          tooltip: 'Refresh appointments',
+          onPressed: _loading ? null : _refresh,
+          icon: const Icon(Icons.refresh),
+        )],
       ),
 
       // ========================================================
       // BODY
       // ========================================================
 
-      body: applications.isEmpty
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _loadFailed
+              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('Unable to load appointments. Please try again.'),
+                  TextButton(onPressed: _refresh, child: const Text('Retry')),
+                ]))
+          : applications.isEmpty
           ? _buildEmptyAppointments()
           : _buildAppointmentList(applications),
     );
@@ -203,12 +226,14 @@ class _MyAppointmentsScreenState
                     children: [
                       Icon(Icons.location_on, color: Color(0xFF008F82), size: 18),
                       SizedBox(width: 8),
-                      Text(
-                        'Visiting Jagna Rescue Shelter',
-                        style: TextStyle(
-                          color: Color(0xFF1B5E20),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          'Visiting Jagna Rescue Shelter',
+                          style: TextStyle(
+                            color: Color(0xFF1B5E20),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -260,12 +285,10 @@ class _MyAppointmentsScreenState
     return RefreshIndicator(
       color: primaryColor,
 
-      onRefresh: () async {
-        setState(() {});
-      },
+      onRefresh: _refresh,
 
       child: ListView(
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(
           20,
           12,
@@ -286,7 +309,7 @@ class _MyAppointmentsScreenState
           const SizedBox(height: 6),
 
           Text(
-            '${appointments.length} appointment${appointments.length == 1 ? '' : 's'} scheduled',
+            '${appointments.length} appointment${appointments.length == 1 ? '' : 's'} • Philippine time (UTC+8)',
             style: const TextStyle(
               color: secondaryText,
               fontSize: 13,

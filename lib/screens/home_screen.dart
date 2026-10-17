@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../pet_data.dart';
+import '../services/pet_service.dart';
 import '../saved_pet_store.dart';
 import 'pets_screen.dart';
 import 'ar_view_screen.dart';
@@ -52,10 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // OPEN PETS TAB
   // ============================================================
 
-  void _openPets({
-    String category = 'All',
-    bool search = false,
-  }) {
+  void _openPets({String category = 'All', bool search = false}) {
     setState(() {
       _petsCategory = category;
       _openSearch = search;
@@ -80,41 +78,33 @@ class _HomeScreenState extends State<HomeScreen> {
           index: _selectedIndex,
           children: [
             HomeContentScreen(
-              onOpenPets: ({
-                String category = 'All',
-                bool search = false,
-              }) {
-                _openPets(
-                  category: category,
-                  search: search,
-                );
+              onOpenPets: ({String category = 'All', bool search = false}) {
+                _openPets(category: category, search: search);
               },
             ),
 
             PetsScreen(
-              key: ValueKey(
-                '$_petsCategory-$_openSearch',
-              ),
+              key: ValueKey('$_petsCategory-$_openSearch'),
               initialCategory: _petsCategory,
               autoFocusSearch: _openSearch,
             ),
 
-            ARViewScreen(
-              onBack: () {
-                setState(() {
-                  _selectedIndex = 0;
-                });
-              },
-            ),
-  
+            if (_selectedIndex == 2)
+              ARViewScreen(
+                onBack: () {
+                  setState(() {
+                    _selectedIndex = 0;
+                  });
+                },
+              )
+            else
+              const SizedBox.shrink(),
+
             const FeedScreen(),
 
             ProfileScreen(
               onBrowsePets: () {
-                _openPets(
-                  category: 'All',
-                  search: false,
-                );
+                _openPets(category: 'All', search: false);
               },
             ),
           ],
@@ -124,7 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
       // ==========================================================
       // BOTTOM NAVIGATION
       // ==========================================================
-
       bottomNavigationBar: _buildBottomNavigation(isDark),
     );
   }
@@ -163,12 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
               isDark: isDark,
             ),
 
-            _navItem(
-              index: 1,
-              icon: Icons.pets,
-              label: 'Pets',
-              isDark: isDark,
-            ),
+            _navItem(index: 1, icon: Icons.pets, label: 'Pets', isDark: isDark),
 
             _navItem(
               index: 2,
@@ -208,9 +192,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final bool selected = _selectedIndex == index;
 
-    final selectedBg = isDark ? const Color(0xFFA94327) : const Color(0xFFFFB15F);
+    final selectedBg = isDark
+        ? const Color(0xFFA94327)
+        : const Color(0xFFFFB15F);
     final selectedFg = isDark ? Colors.white : const Color(0xFF713711);
-    final unselectedFg = isDark ? const Color(0xFF94A3B8) : const Color(0xFF526069);
+    final unselectedFg = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF526069);
 
     return GestureDetector(
       onTap: () {
@@ -224,14 +212,9 @@ class _HomeScreenState extends State<HomeScreen> {
       },
 
       child: AnimatedContainer(
-        duration: const Duration(
-          milliseconds: 180,
-        ),
+        duration: const Duration(milliseconds: 180),
 
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 7,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
 
         decoration: BoxDecoration(
           color: selected ? selectedBg : Colors.transparent,
@@ -242,11 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
 
           children: [
-            Icon(
-              icon,
-              size: 20,
-              color: selected ? selectedFg : unselectedFg,
-            ),
+            Icon(icon, size: 20, color: selected ? selectedFg : unselectedFg),
 
             Text(
               label,
@@ -254,9 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: 8,
                 color: selected ? selectedFg : unselectedFg,
-                fontWeight: selected
-                    ? FontWeight.w600
-                    : FontWeight.normal,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],
@@ -271,21 +248,72 @@ class _HomeScreenState extends State<HomeScreen> {
 // =================================================================
 
 class HomeContentScreen extends StatefulWidget {
-  final Function({
-    String category,
-    bool search,
-  }) onOpenPets;
+  final Function({String category, bool search}) onOpenPets;
 
-  const HomeContentScreen({
-    super.key,
-    required this.onOpenPets,
-  });
+  const HomeContentScreen({super.key, required this.onOpenPets});
 
   @override
   State<HomeContentScreen> createState() => _HomeContentScreenState();
 }
 
 class _HomeContentScreenState extends State<HomeContentScreen> {
+  final _homePets = ValueNotifier<List<Map<String, dynamic>>>([]);
+  bool _loadingPets = true;
+  bool _petLoadFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHomePets();
+  }
+
+  @override
+  void dispose() {
+    _homePets.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadHomePets() async {
+    setState(() {
+      _loadingPets = true;
+      _petLoadFailed = false;
+    });
+    try {
+      final pets = await PetService().fetchPets(
+        status: 'available',
+        throwOnError: true,
+      );
+      if (!mounted) return;
+      _homePets.value = pets;
+    } catch (_) {
+      if (!mounted) return;
+      _petLoadFailed = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to load pets. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingPets = false);
+    }
+  }
+
+  Widget? _petFeedState() {
+    if (_loadingPets) {
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_petLoadFailed) {
+      return Column(
+        children: [
+          const Text('Unable to load pets. Please check your connection.'),
+          TextButton(onPressed: _loadHomePets, child: const Text('Retry')),
+        ],
+      );
+    }
+    return null;
+  }
+
   // ============================================================
   // COLORS
   // ============================================================
@@ -296,6 +324,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
   Future<void> _refresh() async {
     await Future.wait([
+      _loadHomePets(),
       PetData.syncWithSupabase(),
       FavoritesService().init(),
       NotificationService().refreshUnreadCount(),
@@ -326,12 +355,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 parent: ClampingScrollPhysics(),
               ),
 
-              padding: const EdgeInsets.fromLTRB(
-                10,
-                10,
-                10,
-                20,
-              ),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,10 +378,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     'Featured Pets',
                     seeAll: true,
                     onSeeAll: () {
-                      widget.onOpenPets(
-                        category: 'All',
-                        search: false,
-                      );
+                      widget.onOpenPets(category: 'All', search: false);
                     },
                   ),
 
@@ -367,10 +388,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
                   const SizedBox(height: 18),
 
-                  _sectionTitle(
-                    context,
-                    'Recommended for You',
-                  ),
+                  _sectionTitle(context, 'Recommended for You'),
 
                   const SizedBox(height: 8),
 
@@ -394,9 +412,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
     return Container(
       height: 58,
 
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
 
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -416,7 +432,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8EA),
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFE2E8EA),
                 width: 1,
               ),
               image: const DecorationImage(
@@ -457,7 +475,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     icon: Icon(
                       Icons.notifications_none_rounded,
                       size: 24,
-                      color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF062B35),
+                      color: isDark
+                          ? const Color(0xFFF8FAFC)
+                          : const Color(0xFF062B35),
                     ),
                   ),
                   if (unreadCount > 0)
@@ -503,12 +523,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
       width: double.infinity,
       height: 220,
 
-      padding: const EdgeInsets.fromLTRB(
-        25,
-        27,
-        25,
-        25,
-      ),
+      padding: const EdgeInsets.fromLTRB(25, 27, 25, 25),
 
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
@@ -517,10 +532,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
 
-          colors: [
-            Color(0xFFC95635),
-            Color(0xFF99644F),
-          ],
+          colors: [Color(0xFFC95635), Color(0xFF99644F)],
         ),
       ),
 
@@ -544,10 +556,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
           const Text(
             'Discover pets available for adoption near you.',
 
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 13),
           ),
 
           const Spacer(),
@@ -557,28 +566,19 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
             child: ElevatedButton.icon(
               onPressed: () {
-                widget.onOpenPets(
-                  category: 'All',
-                  search: true,
-                );
+                widget.onOpenPets(category: 'All', search: true);
               },
 
-              icon: const Icon(
-                Icons.search_rounded,
-              ),
+              icon: const Icon(Icons.search_rounded),
 
-              label: const Text(
-                'Start Search',
-              ),
+              label: const Text('Start Search'),
 
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFAA3F20),
                 foregroundColor: Colors.white,
                 elevation: 0,
 
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
 
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
@@ -645,15 +645,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             title: 'Dogs',
             icon: Icons.pets,
 
-            iconBackground: const Color(
-              0xFFFFAF62,
-            ),
+            iconBackground: const Color(0xFFFFAF62),
 
             onTap: () {
-              widget.onOpenPets(
-                category: 'Dogs',
-                search: false,
-              );
+              widget.onOpenPets(category: 'Dogs', search: false);
             },
           ),
         ),
@@ -666,15 +661,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             title: 'Cats',
             icon: Icons.cruelty_free,
 
-            iconBackground: const Color(
-              0xFF008F82,
-            ),
+            iconBackground: const Color(0xFF008F82),
 
             onTap: () {
-              widget.onOpenPets(
-                category: 'Cats',
-                search: false,
-              );
+              widget.onOpenPets(category: 'Cats', search: false);
             },
           ),
         ),
@@ -720,11 +710,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 shape: BoxShape.circle,
               ),
 
-              child: Icon(
-                icon,
-                color: const Color(0xFF67310F),
-                size: 25,
-              ),
+              child: Icon(icon, color: const Color(0xFF67310F), size: 25),
             ),
 
             const SizedBox(width: 10),
@@ -749,12 +735,17 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
   // ============================================================
 
   Widget _buildFeaturedPets() {
+    final state = _petFeedState();
+    if (state != null) return state;
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
-      valueListenable: PetData.petsNotifier,
+      valueListenable: _homePets,
       builder: (context, livePets, child) {
         final isDark = ThemeService.isDarkMode(context);
         final pets = livePets
-            .where((p) => (p['status'] ?? '').toString().toLowerCase() != 'adopted')
+            .where(
+              (p) =>
+                  (p['status'] ?? '').toString().toLowerCase() == 'available',
+            )
             .take(5)
             .toList();
 
@@ -766,11 +757,13 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFE2E8F0),
               ),
             ),
             child: Text(
-              'No adoptable pets listed yet.',
+              'No pets currently available for adoption',
               style: TextStyle(
                 color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
                 fontSize: 14,
@@ -805,15 +798,25 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
   Map<String, String> _getPetMoodBadge(Map<String, dynamic> pet, int index) {
     final name = (pet['name'] ?? '').toString().toLowerCase();
-    final temperament = (pet['temperament'] ?? pet['personalityShort'] ?? '').toString().toLowerCase();
+    final temperament = (pet['temperament'] ?? pet['personalityShort'] ?? '')
+        .toString()
+        .toLowerCase();
 
-    if (name.contains('mijares') || temperament.contains('ready') || temperament.contains('love')) {
+    if (name.contains('mijares') ||
+        temperament.contains('ready') ||
+        temperament.contains('love')) {
       return {'emoji': '❤️', 'text': 'Ready to Love'};
-    } else if (name.contains('sky') || temperament.contains('gentle') || temperament.contains('calm')) {
+    } else if (name.contains('sky') ||
+        temperament.contains('gentle') ||
+        temperament.contains('calm')) {
       return {'emoji': '🌸', 'text': 'Gentle Soul'};
-    } else if (name.contains('bantay') || temperament.contains('cuddle') || temperament.contains('hug')) {
+    } else if (name.contains('bantay') ||
+        temperament.contains('cuddle') ||
+        temperament.contains('hug')) {
       return {'emoji': '🧸', 'text': 'Loves Cuddles'};
-    } else if (name.contains('muning') || temperament.contains('play') || temperament.contains('active')) {
+    } else if (name.contains('muning') ||
+        temperament.contains('play') ||
+        temperament.contains('active')) {
       return {'emoji': '🌸', 'text': 'Gentle Soul'};
     }
 
@@ -863,10 +866,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            emoji,
-            style: const TextStyle(fontSize: 10),
-          ),
+          Text(emoji, style: const TextStyle(fontSize: 10)),
           const SizedBox(width: 4),
           Text(
             text,
@@ -911,8 +911,12 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 ],
               ),
               child: Icon(
-                isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: isSaved ? const Color(0xFFE53935) : const Color(0xFF4A5568),
+                isSaved
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: isSaved
+                    ? const Color(0xFFE53935)
+                    : const Color(0xFF4A5568),
                 size: 16,
               ),
             ),
@@ -939,9 +943,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => PetDetailsScreen(pet: pet),
-          ),
+          MaterialPageRoute(builder: (_) => PetDetailsScreen(pet: pet)),
         );
       },
       child: Container(
@@ -968,7 +970,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return Container(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFE2E8F0),
                     child: Center(
                       child: SizedBox(
                         width: 26,
@@ -977,7 +981,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                           strokeWidth: 2.2,
                           value: loadingProgress.expectedTotalBytes != null
                               ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
+                                    loadingProgress.expectedTotalBytes!
                               : null,
                           color: primaryColor,
                         ),
@@ -987,13 +991,11 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 },
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFE2E8F0),
                     child: const Center(
-                      child: Icon(
-                        Icons.pets,
-                        color: primaryColor,
-                        size: 45,
-                      ),
+                      child: Icon(Icons.pets, color: primaryColor, size: 45),
                     ),
                   );
                 },
@@ -1061,7 +1063,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                       ),
                       const SizedBox(width: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2.5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.68),
                           borderRadius: BorderRadius.circular(10),
@@ -1082,7 +1087,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
                   // Breed
                   Text(
-                    (pet['breed'] ?? 'Unknown Breed').toString(),
+                    '${pet['type'] == 'cat' ? 'Cat' : 'Dog'} • ${pet['breed'] ?? 'Unknown Breed'}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1099,7 +1104,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     children: [
                       // Status Pill
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3.5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(12),
@@ -1142,13 +1150,18 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4.5,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF009688),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF009688).withValues(alpha: 0.4),
+                                color: const Color(
+                                  0xFF009688,
+                                ).withValues(alpha: 0.4),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1.5),
                               ),
@@ -1191,12 +1204,16 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
   // ============================================================
 
   Widget _buildRecommendedPets() {
+    if (_loadingPets || _petLoadFailed) return const SizedBox.shrink();
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
-      valueListenable: PetData.petsNotifier,
+      valueListenable: _homePets,
       builder: (context, livePets, child) {
         final isDark = ThemeService.isDarkMode(context);
         final pets = livePets
-            .where((p) => (p['status'] ?? '').toString().toLowerCase() != 'adopted')
+            .where(
+              (p) =>
+                  (p['status'] ?? '').toString().toLowerCase() == 'available',
+            )
             .toList();
 
         if (pets.isEmpty) {
@@ -1204,7 +1221,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             padding: const EdgeInsets.symmetric(vertical: 36),
             alignment: Alignment.center,
             child: Text(
-              'No adoptable pets available right now.',
+              'No pets currently available for adoption',
               style: TextStyle(
                 color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
                 fontSize: 14,
@@ -1249,9 +1266,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => PetDetailsScreen(pet: pet),
-          ),
+          MaterialPageRoute(builder: (_) => PetDetailsScreen(pet: pet)),
         );
       },
       child: Container(
@@ -1286,7 +1301,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                        color: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFE2E8F0),
                         child: Center(
                           child: SizedBox(
                             width: 24,
@@ -1295,7 +1312,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                               strokeWidth: 2.2,
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
+                                        loadingProgress.expectedTotalBytes!
                                   : null,
                               color: primaryColor,
                             ),
@@ -1305,7 +1322,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        color: isDark
+                            ? const Color(0xFF0F172A)
+                            : const Color(0xFFF1F5F9),
                         child: const Icon(
                           Icons.pets,
                           color: primaryColor,
@@ -1334,7 +1353,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     left: 8,
                     bottom: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.68),
                         borderRadius: BorderRadius.circular(10),
@@ -1378,7 +1400,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F2830),
+                                  color: isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : const Color(0xFF0F2830),
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   height: 1.15,
@@ -1398,11 +1422,13 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
                         // Breed
                         Text(
-                          (pet['breed'] ?? 'Unknown Breed').toString(),
+                          '${pet['type'] == 'cat' ? 'Cat' : 'Dog'} • ${pet['breed'] ?? 'Unknown Breed'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                             fontSize: 11.5,
                             fontWeight: FontWeight.w400,
                           ),
@@ -1430,7 +1456,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2.5,
+                          ),
                           decoration: BoxDecoration(
                             color: isDark
                                 ? const Color(0xFF008F82).withValues(alpha: 0.2)
@@ -1440,7 +1469,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                           child: Text(
                             (pet['status'] ?? 'Available').toString(),
                             style: TextStyle(
-                              color: isDark ? const Color(0xFF2DD4BF) : const Color(0xFF00796B),
+                              color: isDark
+                                  ? const Color(0xFF2DD4BF)
+                                  : const Color(0xFF00796B),
                               fontSize: 9.5,
                               fontWeight: FontWeight.w600,
                             ),

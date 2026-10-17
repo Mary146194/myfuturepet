@@ -2,7 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PetService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final SupabaseClient _client;
+
+  PetService({SupabaseClient? client})
+    : _client = client ?? Supabase.instance.client;
 
   /// Fetch adoptable pets with optional filters (category, search, breed, gender)
   Future<List<Map<String, dynamic>>> fetchPets({
@@ -11,6 +14,7 @@ class PetService {
     String? breed,
     String? gender,
     String? status,
+    bool throwOnError = false,
   }) async {
     try {
       var query = _client
@@ -19,9 +23,11 @@ class PetService {
 
       // Category filter (Dogs / Cats)
       if (category != null && category != 'All') {
-        if (category.toLowerCase() == 'dogs' || category.toLowerCase() == 'dog') {
+        if (category.toLowerCase() == 'dogs' ||
+            category.toLowerCase() == 'dog') {
           query = query.eq('type', 'dog');
-        } else if (category.toLowerCase() == 'cats' || category.toLowerCase() == 'cat') {
+        } else if (category.toLowerCase() == 'cats' ||
+            category.toLowerCase() == 'cat') {
           query = query.eq('type', 'cat');
         }
       }
@@ -50,9 +56,12 @@ class PetService {
       final response = await query.order('created_at', ascending: false);
       final List<dynamic> data = response as List<dynamic>;
 
-      return data.map((item) => _normalizePetData(item as Map<String, dynamic>)).toList();
+      return data
+          .map((item) => _normalizePetData(item as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       debugPrint('Error fetching pets: $e');
+      if (throwOnError) rethrow;
       return [];
     }
   }
@@ -68,7 +77,9 @@ class PetService {
           .limit(limit);
 
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((item) => _normalizePetData(item as Map<String, dynamic>)).toList();
+      return data
+          .map((item) => _normalizePetData(item as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       debugPrint('Error fetching featured pets: $e');
       return [];
@@ -76,7 +87,9 @@ class PetService {
   }
 
   /// Fetch recommended pets for the Home grid
-  Future<List<Map<String, dynamic>>> fetchRecommendedPets({int limit = 6}) async {
+  Future<List<Map<String, dynamic>>> fetchRecommendedPets({
+    int limit = 6,
+  }) async {
     try {
       final response = await _client
           .from('pets')
@@ -86,7 +99,9 @@ class PetService {
           .limit(limit);
 
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((item) => _normalizePetData(item as Map<String, dynamic>)).toList();
+      return data
+          .map((item) => _normalizePetData(item as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       debugPrint('Error fetching recommended pets: $e');
       return [];
@@ -94,7 +109,10 @@ class PetService {
   }
 
   /// Single pet details by ID
-  Future<Map<String, dynamic>?> fetchPetById(String id) async {
+  Future<Map<String, dynamic>?> fetchPetById(
+    String id, {
+    bool throwOnError = false,
+  }) async {
     try {
       final response = await _client
           .from('pets')
@@ -106,6 +124,7 @@ class PetService {
       return _normalizePetData(response);
     } catch (e) {
       debugPrint('Error fetching pet by ID: $e');
+      if (throwOnError) rethrow;
       return null;
     }
   }
@@ -115,17 +134,20 @@ class PetService {
     final shelter = raw['shelters'] as Map<String, dynamic>?;
     final type = (raw['type'] ?? 'dog').toString().toLowerCase();
 
-    // Default fallback image depending on species
-    final fallbackImage = type == 'dog'
-        ? 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800'
-        : 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800';
-
-    final imageUrl = (raw['image_url'] != null && raw['image_url'].toString().trim().isNotEmpty)
-        ? raw['image_url'].toString()
-        : fallbackImage;
-
+    // Prefer the gallery when present; older schemas use image_url only.
+    final photos = raw['photo_urls'];
+    final imageUrls = (photos is List ? photos : const [])
+        .whereType<String>()
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .toList();
+    final legacyImage = raw['image_url']?.toString().trim() ?? '';
+    if (imageUrls.isEmpty && legacyImage.isNotEmpty) {
+      imageUrls.add(legacyImage);
+    }
+    final imageUrl = imageUrls.isEmpty ? '' : imageUrls.first;
     // Calculate age string from birthdate
-    String ageStr = 'Young';
+    String ageStr = raw['age']?.toString() ?? 'Age unknown';
     if (raw['birthdate'] != null) {
       try {
         final bday = DateTime.parse(raw['birthdate'].toString());
@@ -154,11 +176,14 @@ class PetService {
       personalityList.addAll(['Friendly', 'Gentle']);
     }
 
-    final vacStatus = raw['vaccination_status']?.toString() ?? 'Up to date';
-    final isVaccinated = !vacStatus.toLowerCase().contains('unvac') &&
-        !vacStatus.toLowerCase().contains('not') &&
-        !vacStatus.toLowerCase().contains('no');
-
+    final vacStatus = raw['vaccination_status']?.toString() ?? 'Not recorded';
+    final isVaccinated = const {
+      'fully_vaccinated',
+      'fully vaccinated',
+      'vaccinated',
+      'up to date',
+      'up_to_date',
+    }.contains(vacStatus.trim().toLowerCase());
     return {
       'id': raw['id']?.toString() ?? '',
       'name': raw['name']?.toString() ?? 'Unnamed Pet',
@@ -167,19 +192,19 @@ class PetService {
       'breed': raw['breed']?.toString() ?? (type == 'dog' ? 'Aspin' : 'Puspin'),
       'gender': (raw['gender'] != null)
           ? raw['gender'].toString().substring(0, 1).toUpperCase() +
-              raw['gender'].toString().substring(1)
+                raw['gender'].toString().substring(1)
           : 'Unknown',
       'age': ageStr,
       'birthdate': raw['birthdate']?.toString(),
       'status': (raw['status'] != null)
           ? raw['status'].toString().substring(0, 1).toUpperCase() +
-              raw['status'].toString().substring(1)
+                raw['status'].toString().substring(1)
           : 'Available',
       'raw_status': raw['status']?.toString() ?? 'available',
       'size': raw['size']?.toString() ?? 'Medium',
       'weight': raw['weight_kg'] != null ? '${raw['weight_kg']} kg' : 'Normal',
       'color': raw['color']?.toString() ?? 'Mixed',
-      'health_condition': raw['health_condition']?.toString() ?? 'Healthy',
+      'health_condition': raw['health_condition']?.toString() ?? 'Not recorded',
       'vaccination_status': vacStatus,
       'vaccinationStatus': vacStatus,
       'temperament': temperamentStr,
@@ -188,29 +213,29 @@ class PetService {
       'behavior': personalityList.isNotEmpty ? personalityList.first : 'Active',
       'energy': personalityList.isNotEmpty ? personalityList.first : 'Active',
       'vaccinated': isVaccinated,
-      'kidFriendly': temperamentStr.toLowerCase().contains('kid') ||
+      'kidFriendly':
+          temperamentStr.toLowerCase().contains('kid') ||
           temperamentStr.toLowerCase().contains('gentle') ||
           temperamentStr.toLowerCase().contains('friendly'),
-      'description': raw['description']?.toString() ??
-          'Rescued and cared for by Jagna Animal Lover and Rescue Group.',
-      'about': raw['description']?.toString() ??
-          'Rescued and cared for by Jagna Animal Lover and Rescue Group.',
-      'adoption_requirements': raw['adoption_requirements']?.toString() ??
+      'description':
+          raw['description']?.toString() ?? 'Rescue background not provided.',
+      'about':
+          raw['description']?.toString() ?? 'Rescue background not provided.',
+      'adoption_requirements':
+          raw['adoption_requirements']?.toString() ??
           'Valid ID, screening questionnaire, home inspection agreement.',
       'image': imageUrl,
       'image_url': imageUrl,
-      'images': [imageUrl],
+      'images': imageUrls,
       'model_url': raw['model_url']?.toString(),
       'shelter_id': raw['shelter_id']?.toString(),
-      'shelter': shelter?['name']?.toString() ?? 'JAGNA ANIMAL LOVER AND RESCUE GROUP',
-      'shelterPhone': shelter?['contact_number']?.toString() ?? '+63 900 000 0000',
-      'shelterAddress': shelter?['address']?.toString() ?? 'Jagna, Bohol, Philippines',
-      'location': shelter?['address']?.toString() ?? 'Jagna, Bohol, Philippines',
-      'deworming': raw['deworming']?.toString() ??
-          ((raw['health_condition']?.toString().toLowerCase().contains('deworm') ?? false)
-              ? 'Completed'
-              : 'Up to date'),
-      'rabies': raw['rabies']?.toString() ?? (isVaccinated ? 'Immunized' : 'Up to date'),
+      'shelter': shelter?['name']?.toString() ?? 'Shelter not provided',
+      'shelterPhone': shelter?['contact_number']?.toString() ?? '',
+      'shelterAddress':
+          shelter?['address']?.toString() ?? 'Address not provided',
+      'location': shelter?['address']?.toString() ?? 'Address not provided',
+      'deworming': raw['deworming']?.toString() ?? 'Not recorded',
+      'rabies': raw['rabies']?.toString() ?? 'Not recorded',
       'likes': raw['likes'] ?? 0,
     };
   }

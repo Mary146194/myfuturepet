@@ -2,7 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdoptionService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final SupabaseClient _client;
+
+  AdoptionService({SupabaseClient? client})
+    : _client = client ?? Supabase.instance.client;
 
   /// Submit a new adoption application for a specific pet
   Future<Map<String, dynamic>> submitApplication({
@@ -18,12 +21,15 @@ class AdoptionService {
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) {
-      throw Exception('You must be logged in to submit an adoption application.');
+      throw Exception(
+        'You must be logged in to submit an adoption application.',
+      );
     }
 
     // Normalize housing_type to match database check constraint: ('house', 'apartment', 'compound', 'other')
     String normalizedHousing = housingType.trim().toLowerCase();
-    if (normalizedHousing.contains('house') || normalizedHousing.contains('townhouse')) {
+    if (normalizedHousing.contains('house') ||
+        normalizedHousing.contains('townhouse')) {
       normalizedHousing = 'house';
     } else if (normalizedHousing.contains('apartment') ||
         normalizedHousing.contains('condo') ||
@@ -42,11 +48,17 @@ class AdoptionService {
         'full_name': fullName.trim(),
         'contact_number': contactNumber.trim(),
         'address': address.trim(),
-        'occupation': occupation?.trim().isEmpty == true ? null : occupation?.trim(),
+        'occupation': occupation?.trim().isEmpty == true
+            ? null
+            : occupation?.trim(),
         'housing_type': normalizedHousing,
         'has_other_pets': hasOtherPets,
-        'other_pets_details': otherPetsDetails?.trim().isEmpty == true ? null : otherPetsDetails?.trim(),
-        'reason_for_adoption': reasonForAdoption?.trim().isEmpty == true ? null : reasonForAdoption?.trim(),
+        'other_pets_details': otherPetsDetails?.trim().isEmpty == true
+            ? null
+            : otherPetsDetails?.trim(),
+        'reason_for_adoption': reasonForAdoption?.trim().isEmpty == true
+            ? null
+            : reasonForAdoption?.trim(),
         'status': 'pending',
       };
 
@@ -71,7 +83,9 @@ class AdoptionService {
     try {
       final response = await _client
           .from('adoption_applications')
-          .select('*, pets(id, name, type, breed, image_url, status, shelters(id, name, address, contact_number))')
+          .select(
+            '*, pets(id, name, type, breed, image_url, status, shelters(id, name, address, contact_number))',
+          )
           .eq('applicant_id', user.id)
           .order('created_at', ascending: false);
 
