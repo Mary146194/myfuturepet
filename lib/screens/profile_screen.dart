@@ -878,7 +878,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final dialogInputBg = isDark ? const Color(0xFF0F172A) : detailBlue;
 
     final nameController = TextEditingController(text: userName);
-    final roleController = TextEditingController(text: userRole);
 
     XFile? pickedPhoto;
     Uint8List? pickedPhotoBytes;
@@ -1017,22 +1016,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 11),
-                    TextField(
-                      controller: roleController,
-                      enabled: !isSaving,
-                      style: TextStyle(color: dialogText, fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'Profile',
-                        labelStyle: TextStyle(fontSize: 13, color: dialogSubText),
-                        filled: true,
-                        fillColor: dialogInputBg,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -1074,15 +1057,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final updatedName = nameController.text.trim().isNotEmpty
                                 ? nameController.text.trim()
                                 : userName;
-                            final updatedRole = roleController.text.trim().isNotEmpty
-                                ? roleController.text.trim()
-                                : userRole;
 
                             // 2. Persist to profiles database and auth
                             if (currentUser != null) {
                               final Map<String, dynamic> profileUpdates = {
                                 'full_name': updatedName,
-                                'role': updatedRole,
                               };
                               await supabase
                                   .from('profiles')
@@ -1091,7 +1070,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                               final Map<String, dynamic> authUpdates = {
                                 'full_name': updatedName,
-                                'role': updatedRole,
                               };
                               if (newAvatarUrl.isNotEmpty) {
                                 authUpdates['avatar_url'] = newAvatarUrl;
@@ -1102,7 +1080,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (!mounted) return;
                             setState(() {
                               userName = updatedName;
-                              userRole = updatedRole;
                               profileImage = newAvatarUrl;
                             });
                             if (dialogContext.mounted) {
@@ -1222,6 +1199,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout() async {
     try {
+      AdoptionApplicationStore.clear();
+      AppointmentStore.clear();
       await supabase.auth.signOut(scope: SignOutScope.local);
       if (!mounted) return;
 

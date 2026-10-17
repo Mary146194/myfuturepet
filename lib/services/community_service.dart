@@ -265,6 +265,9 @@ class CommunityService {
       if (res.isNotEmpty) {
         final remote = Map<String, dynamic>.from(res[0]);
         remote['author'] = newComment['author'];
+        // Remove temporary local comment now that remote insert confirmed
+        _localComments[postId]?.removeWhere((c) => c['id'] == newComment['id']);
+        await _saveLocalComments();
         return remote;
       }
     } catch (e) {

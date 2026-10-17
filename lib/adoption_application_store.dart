@@ -15,9 +15,8 @@ class AdoptionApplicationStore {
   static Future<List<Map<String, dynamic>>> syncWithSupabase() async {
     try {
       final myApps = await AdoptionService().fetchMyApplications();
-      if (myApps.isNotEmpty) {
-        applications.clear();
-        for (var raw in myApps) {
+      applications.clear();
+      for (var raw in myApps) {
           final petRaw = raw['pets'] as Map<String, dynamic>?;
           applications.add({
             'id': raw['id']?.toString() ?? '',
@@ -45,7 +44,6 @@ class AdoptionApplicationStore {
             'decidedAt': raw['decided_at']?.toString() ?? '',
           });
         }
-      }
     } catch (e) {
       debugPrint('Error syncing adoption applications: $e');
     }
@@ -202,23 +200,12 @@ class AdoptionApplicationStore {
   }
 
   // ============================================================
-  // REMOVE ONE APPLICATION
-  // ============================================================
-
-  static void removeApplication(int index) {
-    if (index >= 0 && index < applications.length) {
-      final app = applications[index];
-      final appId = app['id']?.toString();
-      if (appId != null && appId.isNotEmpty) {
-        AdoptionService().withdrawApplication(appId).catchError((_) => false);
-      }
-      applications.removeAt(index);
-    }
-  }
-
-  // ============================================================
   // CLEAR ALL APPLICATIONS
   // ============================================================
+
+  static void clear() {
+    applications.clear();
+  }
 
   static void clearApplications() {
     applications.clear();

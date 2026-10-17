@@ -134,22 +134,9 @@ class AppointmentStore {
   static int get appointmentCount => appointments.length;
 
   // ============================================================
-  // REMOVE APPOINTMENT
-  // ============================================================
-
-  static void removeAppointment(int index) {
-    if (index >= 0 && index < appointments.length) {
-      final id = appointments[index]['id']?.toString();
-      if (id != null && id.isNotEmpty) {
-        AppointmentService().cancelAppointment(id).catchError((_) => false);
-      }
-      appointments.removeAt(index);
-    }
-  }
-
-  // ============================================================
   // CLEAR ALL
   // ============================================================
 
+  static void clear() => appointments.clear();
   static void clearAppointments() => appointments.clear();
 }
