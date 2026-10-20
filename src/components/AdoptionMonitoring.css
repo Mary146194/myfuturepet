@@ -1,0 +1,628 @@
+.adoption-monitoring {
+  background: linear-gradient(145deg, #ffffff, #f9f7f4);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 
+    0 15px 40px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.adoption-monitoring h2 {
+  margin-top: 0;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 22px;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.adoption-monitoring .section-subtitle,
+.section-subtitle {
+  color: #777;
+  font-size: 14px;
+  margin-top: 0;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #FF6B35;
+}
+
+/* Toast */
+.adoption-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #eafaf0;
+  color: #16a34a;
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.adoption-toast .toast-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Filter Row */
+.adoption-filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.filter-chips-wrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adoption-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adoption-chip:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.adoption-chip.active {
+  background: #1e293b;
+  color: #ffffff;
+  border-color: #1e293b;
+}
+
+.adoption-chip.chip-pending.active {
+  background: linear-gradient(145deg, #FF6B35, #FF5520);
+  border-color: #FF6B35;
+}
+
+.adoption-chip.chip-review.active {
+  background: linear-gradient(145deg, #d97706, #b45309);
+  border-color: #d97706;
+}
+
+.adoption-chip.chip-approved.active {
+  background: linear-gradient(145deg, #16a34a, #15803d);
+  border-color: #16a34a;
+}
+
+.adoption-chip.chip-rejected.active {
+  background: linear-gradient(145deg, #dc2626, #b91c1c);
+  border-color: #dc2626;
+}
+
+.chip-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.adoption-chip.active .chip-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.refresh-adoptions-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-adoptions-btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+/* Table */
+.adoptions-table-container {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.03);
+}
+
+.adoptions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.adoptions-table th {
+  text-align: left;
+  padding: 14px 18px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.adoptions-table .th-actions {
+  text-align: right;
+  padding-right: 24px;
+}
+
+.adoptions-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.adoptions-table tr:hover td {
+  background: #fafbfc;
+}
+
+/* Cell styles */
+.pet-info-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pet-thumb-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fff3ec, #ffe5d8);
+  color: #FF6B35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.pet-text-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.pet-text-meta strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.pet-breed-tag {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.applicant-info-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.applicant-info-cell strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.applicant-contact-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.shelter-link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.housing-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.date-cell {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+/* Status Pills */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.status-pending {
+  background: #fff3ec;
+  color: #c1410a;
+}
+
+.status-under_review {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.status-approved {
+  background: #eafaf0;
+  color: #16a34a;
+}
+
+.status-rejected {
+  background: #fdf0f0;
+  color: #dc2626;
+}
+
+.status-withdrawn {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.review-app-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #FF6B35;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.review-app-btn:hover {
+  background: #fff6f2;
+  border-color: #FF6B35;
+}
+
+.empty-adoptions-cell {
+  padding: 50px 20px !important;
+  text-align: center;
+}
+
+.empty-adoptions-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+}
+
+.empty-adoptions-content .empty-icon {
+  font-size: 38px;
+  color: #cbd5e1;
+}
+
+/* Dossier Modal */
+.adoption-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.adoption-dossier-card {
+  background: #ffffff;
+  border-radius: 20px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: modalZoomIn 0.25s ease;
+}
+
+.dossier-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 26px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dossier-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dossier-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fff3ec, #ffe5d8);
+  color: #FF6B35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.dossier-title-wrap h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.dossier-id-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.dossier-body {
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Pet Banner */
+.dossier-pet-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.pet-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #FF6B35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pet-banner-info {
+  flex: 1;
+}
+
+.pet-banner-info h4 {
+  margin: 0 0 3px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pet-banner-info span {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+/* Dossier Grid */
+.dossier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+@media (max-width: 640px) {
+  .dossier-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dossier-section {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+}
+
+.dossier-section h5 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+}
+
+.info-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-kv-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.kv-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.kv-val {
+  color: #1e293b;
+  font-size: 13.5px;
+}
+
+.has-pets-yes {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.has-pets-no {
+  color: #64748b;
+}
+
+/* Reason Box */
+.dossier-reason-box {
+  background: #fffdfa;
+  border: 1px solid #feebc8;
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+
+.dossier-reason-box h5 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #b45309;
+}
+
+.dossier-reason-box p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #4a5568;
+  font-style: italic;
+}
+
+/* Notes Box */
+.dossier-notes-box h5 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #475569;
+}
+
+.dossier-notes-box textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.dossier-notes-box textarea:focus {
+  border-color: #FF6B35;
+  background: #ffffff;
+}
+
+/* Actions Bar */
+.dossier-actions-bar {
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.decision-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.decision-btn {
+  flex: 1;
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-approve {
+  background: linear-gradient(145deg, #16a34a, #15803d);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3);
+}
+
+.btn-approve:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.4);
+}
+
+.btn-review {
+  background: linear-gradient(145deg, #d97706, #b45309);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.3);
+}
+
+.btn-review:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.4);
+}
+
+.btn-reject {
+  background: linear-gradient(145deg, #dc2626, #b91c1c);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
+}
+
+.btn-reject:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.4);
+}
+
+.decision-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
