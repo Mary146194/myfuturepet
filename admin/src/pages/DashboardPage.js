@@ -545,16 +545,7 @@ function DashboardPage({ user, onLogout }) {
                 </div>
               </div>
 
-              <div className="role-hint-banner">
-                <span className="hint-label">Default Credentials:</span>
-                <span className="hint-text">
-                  {targetRole === 'shelter_staff' ? (
-                    <>Use password <code className="hint-code">staff123</code> (or <code className="hint-code">jalrg2026</code>)</>
-                  ) : (
-                    <>Use password <code className="hint-code">admin123</code> (or your login password)</>
-                  )}
-                </span>
-              </div>
+              <p className="text-xs text-slate-500">Enter your own account password to switch roles.</p>
 
               <div className="role-modal-actions">
                 <button
