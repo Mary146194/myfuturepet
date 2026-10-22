@@ -60,8 +60,7 @@ function SystemLogs() {
           details,
           created_at,
           actor:actor_id (
-            full_name,
-            email
+            full_name
           )
         `)
         .order('created_at', { ascending: false })

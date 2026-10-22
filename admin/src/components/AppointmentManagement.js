@@ -45,9 +45,7 @@ function AppointmentManagement() {
           updated_at,
           applicant:user_id (
             id,
-            full_name,
-            email,
-            phone
+            full_name
           ),
           pet:pet_id (
             id,

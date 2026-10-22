@@ -60,8 +60,7 @@ function AdoptionMonitoring() {
           ),
           applicant:applicant_id (
             id,
-            full_name,
-            email
+            full_name
           )
         `)
         .order('created_at', { ascending: false });

@@ -79,8 +79,7 @@ function CommunityPosts() {
           created_at,
           author:user_id (
             id,
-            full_name,
-            email
+            full_name
           )
         `)
         .order('created_at', { ascending: true });
@@ -292,8 +291,7 @@ function CommunityPosts() {
           created_at,
           author:author_id (
             id,
-            full_name,
-            email
+            full_name
           ),
           shelter:shelter_id (
             id,
