@@ -9,12 +9,16 @@ instead of adding a parent-node scale, which skinned meshes ignore in some viewe
     python scripts/normalize_glb.py dog.glb dog_medium.glb --type dog --height-m 0.56
 
 --height-m is the height of the *idle animation pose*; the stored bind-pose box is
-smaller by IDLE_POSE_RATIO (see glb_tools.py).
+smaller by IDLE_POSE_RATIO (see glb_tools.py). For a static model with no animation
+(e.g. a Meshy export) pass --pose-ratio 1, and --ground to put the feet on the floor
+at the origin, which Scene Viewer needs:
+
+    python scripts/normalize_glb.py meshy_bella.glb bella.glb --type dog --height-m 0.56 --pose-ratio 1 --ground
 """
 import argparse
 import struct
 
-from glb_tools import IDLE_POSE_RATIO, model_height, read_glb, write_glb
+from glb_tools import IDLE_POSE_RATIO, model_height, position_bounds, read_glb, write_glb
 
 
 def _accessor_span(gltf, idx, comps):
@@ -76,6 +80,20 @@ def normalize(gltf, binary, target_height_m):
     return current, factor
 
 
+def ground(gltf):
+    """Shift every scene root node so the feet sit at y=0 and the model is centred on x/z."""
+    lo, hi = position_bounds(gltf)
+    offset = [-(lo[0] + hi[0]) / 2, -lo[1], -(lo[2] + hi[2]) / 2]
+    scene = gltf["scenes"][gltf.get("scene", 0)]
+    for idx in scene["nodes"]:
+        node = gltf["nodes"][idx]
+        if "matrix" in node:
+            raise ValueError(f"root node {idx} uses a matrix; cannot ground automatically")
+        t = node.get("translation", [0, 0, 0])
+        node["translation"] = [t[i] + offset[i] for i in range(3)]
+    return offset
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("src")
@@ -83,15 +101,23 @@ def main():
     ap.add_argument("--type", choices=sorted(IDLE_POSE_RATIO), required=True)
     ap.add_argument("--height-m", type=float, required=True,
                     help="target standing height (top of head, idle pose) in metres")
+    ap.add_argument("--pose-ratio", type=float,
+                    help="idle-pose height / stored box height; 1 for static models")
+    ap.add_argument("--ground", action="store_true",
+                    help="move the feet to y=0 and centre on x/z (Meshy-style models)")
     args = ap.parse_args()
     gltf, binary = read_glb(args.src)
-    bind_target = args.height_m / IDLE_POSE_RATIO[args.type]
+    ratio = args.pose_ratio if args.pose_ratio is not None else IDLE_POSE_RATIO[args.type]
+    bind_target = args.height_m / ratio
     before, factor = normalize(gltf, binary, bind_target)
     after = model_height(gltf)
     assert abs(after - bind_target) < 1e-4, (after, bind_target)
+    gltf["asset"]["extras"]["poseRatio"] = ratio
+    if args.ground:
+        ground(gltf)
     write_glb(args.dst, gltf, binary)
     print(f"{args.src}: bind {before:.3f} -> {after:.3f} m (x{factor:.5f}), "
-          f"idle pose ~{args.height_m:.2f} m, saved {args.dst}")
+          f"standing ~{args.height_m:.2f} m, saved {args.dst}")
 
 
 if __name__ == "__main__":

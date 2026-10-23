@@ -50,10 +50,9 @@ jobs:
           files: build/app/outputs/flutter-apk/MyFuturePet.apk
           name: My Future Pet ${{ github.ref_name }}
           body: |
-            Official Mobile App APK for My Future Pet (BSIT Capstone, Jagna Animal Lover and Rescue Group)
-            - Universal In-App 3D Camera AR (100% Android compatible, no ARCore required)
-            - Sensor-fusion floor surface tracking and ground horizon locking
-            - Scientific 1:1 metric life-scale estimation with distance calibration (1.0m, 1.5m, 2.0m)
-            - Rigged 3D animations (Sit, Wag Tail, Speak) with floor contact shadows
+            Debug APK for My Future Pet (BSIT Capstone, Jagna Animal Lover and Rescue Group)
+            - Real floor AR through Google ARCore (Scene Viewer) on supported Android phones
+            - Sensor-based floor preview with approximate size on phones without ARCore
+            - Life-size 3D pet models; static (no animation) models hide the Sit and Wag Tail buttons
           draft: false
           prerelease: false

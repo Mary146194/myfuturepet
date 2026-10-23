@@ -767,15 +767,18 @@ class _ARViewScreenState extends State<ARViewScreen>
       ),
       src: url,
       alt: '3D model of $_petName',
+      // Show the pet's photo in 3D Studio until the model has downloaded.
+      poster: studio && _petImageUrl.isNotEmpty ? _petImageUrl : null,
       ar: !studio,
       arModes: const ['scene-viewer', 'quick-look', 'webxr'],
       arPlacement: ArPlacement.floor,
       arScale: ArScale.fixed,
-      onWebViewCreated: studio
-          ? null
-          : (controller) {
-              _runArJavaScript = controller.runJavaScriptReturningResult;
-            },
+      onWebViewCreated: (controller) {
+        if (!studio) {
+          _runArJavaScript = controller.runJavaScriptReturningResult;
+        }
+        _probeAnimations(controller.runJavaScriptReturningResult);
+      },
       autoRotate: studio,
       cameraControls: true,
       autoPlay: true,
@@ -1717,24 +1720,55 @@ class _ARViewScreenState extends State<ARViewScreen>
   // BEHAVIOR ACTIONS (SIT, WAG TAIL, SPEAK)
   // ============================================================
 
+  /// Whether the loaded model has animations. Static models (e.g. Meshy exports)
+  /// report none, and then Sit / Wag Tail would do nothing, so they are hidden.
+  /// Stays true until the viewer reports otherwise (and always in tests).
+  bool _hasAnimations = true;
+  int _animProbeGeneration = 0;
+
+  Future<void> _probeAnimations(Future<Object> Function(String) run) async {
+    final generation = ++_animProbeGeneration;
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      if (!mounted || generation != _animProbeGeneration) return;
+      try {
+        final result = await run(
+          "(() => { const v = document.querySelector('model-viewer'); "
+          'return v && v.loaded ? v.availableAnimations.length : -1; })()',
+        );
+        final count = int.tryParse(result.toString());
+        if (count != null && count >= 0) {
+          if (mounted && generation == _animProbeGeneration) {
+            setState(() => _hasAnimations = count > 0);
+          }
+          return;
+        }
+      } catch (_) {
+        // The viewer is not ready yet; try again.
+      }
+    }
+  }
+
   Widget _buildActionRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _actionButton(
-          label: 'Sit',
-          icon: Icons.airline_seat_recline_normal,
-          isSelected: _currentAction == 'Sit',
-          onTap: () => _triggerAction('Sit'),
-        ),
-        const SizedBox(width: 8),
-        _actionButton(
-          label: 'Wag Tail',
-          icon: Icons.pets,
-          isSelected: _currentAction == 'Wag Tail',
-          onTap: () => _triggerAction('Wag Tail'),
-        ),
-        const SizedBox(width: 8),
+        if (_hasAnimations) ...[
+          _actionButton(
+            label: 'Sit',
+            icon: Icons.airline_seat_recline_normal,
+            isSelected: _currentAction == 'Sit',
+            onTap: () => _triggerAction('Sit'),
+          ),
+          const SizedBox(width: 8),
+          _actionButton(
+            label: 'Wag Tail',
+            icon: Icons.pets,
+            isSelected: _currentAction == 'Wag Tail',
+            onTap: () => _triggerAction('Wag Tail'),
+          ),
+          const SizedBox(width: 8),
+        ],
         _actionButton(
           label: 'Speak',
           icon: Icons.record_voice_over,

@@ -66,8 +66,15 @@ def model_height(gltf):
 
 
 def idle_height(gltf, pet_type):
-    """Approximate standing height as seen in the idle animation."""
-    return model_height(gltf) * IDLE_POSE_RATIO.get(str(pet_type).lower(), 1.0)
+    """Approximate standing height as seen in the idle animation.
+
+    normalize_glb.py records the ratio it used in asset.extras.poseRatio (1.0 for
+    static models such as Meshy exports); older files fall back to the type default.
+    """
+    ratio = gltf.get("asset", {}).get("extras", {}).get("poseRatio")
+    if ratio is None:
+        ratio = IDLE_POSE_RATIO.get(str(pet_type).lower(), 1.0)
+    return model_height(gltf) * ratio
 
 
 def expected_height(pet_type, size):

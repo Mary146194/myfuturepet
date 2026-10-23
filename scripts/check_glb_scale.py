@@ -4,7 +4,8 @@
 
 Reads pets (public read, anon key) from Supabase, downloads each distinct model and
 compares its idle-pose standing height with the expected value in glb_tools.EXPECTED_HEIGHT_M.
-Exit code 1 if any pet is outside +/-10 %.
+Also fails any model over 8 MB (warns over 5 MB): phones download it every time
+the pet is opened in AR / 3D. Exit code 1 if any pet is outside +/-10 % or too big.
 """
 import argparse
 import json
@@ -14,6 +15,9 @@ import tempfile
 import urllib.request
 
 from glb_tools import TOLERANCE, expected_height, idle_height, read_glb
+
+MAX_MB = 8.0
+WARN_MB = 5.0
 
 
 def load_env(path):
@@ -50,15 +54,18 @@ def main():
             continue
         if url not in cache:
             path = os.path.join(tmp, f"m{len(cache)}.glb")
-            open(path, "wb").write(get(url))
-            cache[url] = read_glb(path)[0]
-        got = idle_height(cache[url], pet["type"])
+            data = get(url)
+            open(path, "wb").write(data)
+            cache[url] = (read_glb(path)[0], len(data) / 1e6)
+        gltf, mb = cache[url]
+        got = idle_height(gltf, pet["type"])
         want = expected_height(pet["type"], pet["size"])
-        ok = abs(got - want) <= want * TOLERANCE
+        ok = abs(got - want) <= want * TOLERANCE and mb <= MAX_MB
         bad += 0 if ok else 1
+        note = "  TOO BIG" if mb > MAX_MB else "  (large)" if mb > WARN_MB else ""
         print(f"{'PASS' if ok else 'FAIL'} {pet['name']:<8} {pet['type']}/{pet['size']:<7} "
-              f"model {got:7.3f} m  expected {want:.2f} m")
-    print("all models life size" if not bad else f"{bad} pet(s) have a wrong-size model")
+              f"model {got:7.3f} m  expected {want:.2f} m  {mb:5.1f} MB{note}")
+    print("all models life size" if not bad else f"{bad} pet(s) have a wrong-size or oversized model")
     sys.exit(1 if bad else 0)
 
 
