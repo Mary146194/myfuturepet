@@ -5,12 +5,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import '../ar_floor_geometry.dart';
 import '../ar_model_url.dart';
+import '../services/ar_support_service.dart';
 import '../services/pet_service.dart';
 
 typedef ARModelBuilder =
     Widget Function(BuildContext context, String modelUrl, bool studio);
 typedef ARSessionLauncher = Future<bool> Function();
+typedef ARSupportChecker = Future<ArSupport> Function();
 
 class ARViewScreen extends StatefulWidget {
   final Map<String, dynamic>? pet;
@@ -19,6 +22,7 @@ class ARViewScreen extends StatefulWidget {
   final ARModelBuilder? modelBuilder;
   final bool? cameraSupported;
   final ARSessionLauncher? arSessionLauncher;
+  final ARSupportChecker? arSupportChecker;
 
   const ARViewScreen({
     super.key,
@@ -28,6 +32,7 @@ class ARViewScreen extends StatefulWidget {
     this.modelBuilder,
     this.cameraSupported,
     this.arSessionLauncher,
+    this.arSupportChecker,
   });
 
   @override
@@ -71,25 +76,37 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   bool _isPetPlaced = true;
-  Offset _petPosition = const Offset(
-    0.5,
-    0.58,
-  ); // Normalized viewport coordinates [0..1]
-  double _scale = 1.0; // Sizing factor (0.4 to 2.5)
+  double _scale = 1.0; // 3D Studio zoom factor (0.4 to 2.5)
 
   String _currentAction = 'Normal'; // 'Normal', 'Sit', 'Wag Tail', 'Speak'
   bool _showSpeechBubble = false;
 
   // ============================================================
-  // AR SURFACE DETECTION & GYROSCOPE MOTION PARALLAX
+  // SENSOR FLOOR PREVIEW (phones without ARCore)
+  //
+  // Not real surface detection: the phone's tilt gives the angle to the
+  // floor, and with an assumed camera height that gives a distance (see
+  // FloorGeometry). The pet is pinned to a world heading by integrating the
+  // gyroscope, so turning the phone moves it across the screen.
   // ============================================================
+
+  static const FloorGeometry _geo = FloorGeometry();
+  // Fixed camera used by the <model-viewer> overlay so its on-screen size
+  // follows from the distance alone (see _buildInteractiveSpatialCanvas).
+  static const double _orbitMeters = 3.0;
+  static const double _viewerFovDeg = 25.0;
 
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
-  bool _surfaceDetected = true;
-  String _surfaceStatus = 'Floor Surface Detected (Ground Horizon Locked)';
-  bool _isGroundAnchored = true;
-  Offset _gyroParallax = Offset.zero;
+  ArSupport _arSupport = ArSupport.checking;
+  bool _surfaceDetected = false; // true while the phone is aimed at the floor
+  String _surfaceStatus = 'Aim at the floor, then tap to place your pet';
+  double _pitchDownRad = 0.35; // used until sensors report (20 degrees down)
+  double _yawRad = 0;
+  double _anchorYawRad = 0;
+  List<double>? _gravity;
+  DateTime? _lastGyroTime;
+  DateTime _lastSensorUiUpdate = DateTime.fromMillisecondsSinceEpoch(0);
 
   // ============================================================
   // 1:1 METRIC LIFE-SCALE ENGINE
@@ -97,7 +114,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   bool _isLifeScaleLocked = true;
   double _viewingDistanceMeters =
-      1.5; // Default distance: 1.5 meters from floor
+      1.5; // Distance from the phone to where the pet stands on the floor
 
   /// Physical shoulder height of the pet in centimeters.
   double get _realLifeHeightCm {
@@ -152,6 +169,10 @@ class _ARViewScreenState extends State<ARViewScreen>
   int _viewerReset = 0;
 
   String? get _modelGlbUrl => resolvePetModelUrl(_resolvedPet['model_url']);
+
+  /// Standing height of the normalized 3D model in metres (top of head).
+  double get _modelHeightM =>
+      modelHeightMeters(petType: _petType, petSize: _petSize);
 
   void _showArProjectionOptionsDialog() {
     showModalBottomSheet(
@@ -366,9 +387,20 @@ class _ARViewScreenState extends State<ARViewScreen>
       _initializeCamera();
     }
 
-    // Start surface detection and gyro motion parallax
+    // Orientation sensors for the floor preview
     if (_cameraSupported) {
       _initSensors();
+    }
+    _loadArSupport();
+  }
+
+  Future<void> _loadArSupport() async {
+    final checker = widget.arSupportChecker ?? ArSupportService().check;
+    try {
+      final support = await checker();
+      if (mounted) setState(() => _arSupport = support);
+    } catch (_) {
+      if (mounted) setState(() => _arSupport = ArSupport.unknown);
     }
   }
 
@@ -440,36 +472,80 @@ class _ARViewScreenState extends State<ARViewScreen>
 
     try {
       _accelerometerSubscription = accelerometerEventStream().listen((event) {
-        final norm = math.sqrt(event.x * event.x + event.z * event.z);
-        final pitchDegrees = (math.atan2(event.y, norm) * 180 / math.pi).abs();
-
-        // Pitch between 18 and 78 degrees indicates pointing toward ground/floor
-        final bool detected = pitchDegrees >= 18.0 && pitchDegrees <= 78.0;
-        if (detected != _surfaceDetected && mounted) {
-          setState(() {
-            _surfaceDetected = detected;
-            _surfaceStatus = detected
-                ? 'Floor Surface Detected (Ground Horizon Locked)'
-                : 'Point camera toward floor to align surface';
-          });
-        }
+        // Low-pass the accelerometer so hand shake does not move the pet.
+        final g = _gravity;
+        const a = 0.15;
+        final gx = g == null ? event.x : g[0] + a * (event.x - g[0]);
+        final gy = g == null ? event.y : g[1] + a * (event.y - g[1]);
+        final gz = g == null ? event.z : g[2] + a * (event.z - g[2]);
+        _gravity = [gx, gy, gz];
+        _pitchDownRad = pitchDownFromGravity(gx, gy, gz);
+        _refreshFromSensors();
       }, onError: (_) {});
 
       _gyroscopeSubscription = gyroscopeEventStream().listen((event) {
-        if (!_isGroundAnchored || !mounted) return;
-        // Apply counter-motion parallax displacement:
-        final dx = _gyroParallax.dx - (event.y * 0.0075);
-        final dy = _gyroParallax.dy + (event.x * 0.0075);
-        setState(() {
-          _gyroParallax = Offset(
-            dx.clamp(-0.20, 0.20) * 0.985,
-            dy.clamp(-0.16, 0.16) * 0.985,
-          );
-        });
+        final g = _gravity;
+        final last = _lastGyroTime;
+        _lastGyroTime = event.timestamp;
+        if (g == null || last == null) return;
+        final dt = event.timestamp.difference(last).inMicroseconds / 1e6;
+        if (dt <= 0 || dt > 0.5) return;
+        _yawRad +=
+            yawRateFromGyro(
+              gx: event.x,
+              gy: event.y,
+              gz: event.z,
+              ax: g[0],
+              ay: g[1],
+              az: g[2],
+            ) *
+            dt;
+        _refreshFromSensors();
       }, onError: (_) {});
     } catch (e) {
       debugPrint('Sensor initialization error: $e');
     }
+  }
+
+  /// Repaints at most ~30 times a second; sensors fire far more often.
+  void _refreshFromSensors() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (now.difference(_lastSensorUiUpdate).inMilliseconds < 33) return;
+    _lastSensorUiUpdate = now;
+    final aimed =
+        _pitchDownRad >= _geo.minFloorAngleRad && _pitchDownRad <= 1.45;
+    setState(() {
+      _surfaceDetected = aimed;
+      _surfaceStatus = aimed
+          ? 'Tap the floor where $_petName should stand'
+          : 'Aim the camera at the floor, below the horizon';
+    });
+  }
+
+  /// Puts the pet on the floor point under [localPosition] (screen pixels).
+  void _placeFromTap(Offset localPosition, Size size) {
+    final distance = _geo.distanceForTap(
+      pitchDownRad: _pitchDownRad,
+      tapDyPx: localPosition.dy - size.height / 2,
+      screenHeightPx: size.height,
+    );
+    if (distance == null) {
+      _showMessage('Tap the floor, below the horizon line.');
+      return;
+    }
+    setState(() {
+      _viewingDistanceMeters = distance;
+      _anchorYawRad = _geo.yawForTap(
+        cameraYawRad: _yawRad,
+        tapDxPx: localPosition.dx - size.width / 2,
+        screenHeightPx: size.height,
+      );
+      _isPetPlaced = true;
+    });
+    _showMessage(
+      '$_petName placed about ${distance.toStringAsFixed(1)} m away (approximate).',
+    );
   }
 
   // ============================================================
@@ -557,7 +633,7 @@ class _ARViewScreenState extends State<ARViewScreen>
   void _resetAR() {
     setState(() {
       _viewerReset++;
-      _petPosition = const Offset(0.5, 0.58);
+      _anchorYawRad = _yawRad; // straight ahead of where the phone points now
       _isLifeScaleLocked = true;
       _viewingDistanceMeters = 1.5;
       _scale = _calculateLifeScale(1.5);
@@ -600,14 +676,14 @@ class _ARViewScreenState extends State<ARViewScreen>
       if (!mounted) return;
       if (!launched) {
         _showMessage(
-          'Camera AR is unavailable or still loading. Use the virtual floor or try again.',
+          'Floor AR is unavailable on this phone or still loading. Use the floor preview or 3D Studio.',
         );
       }
     } catch (error) {
       debugPrint('Could not start native AR: $error');
       if (!mounted) return;
       _showMessage(
-        'Could not start Camera AR. Use the virtual floor or try again.',
+        'Could not start floor AR. Use the floor preview or 3D Studio.',
       );
     } finally {
       if (mounted) setState(() => _arSessionLaunching = false);
@@ -709,7 +785,16 @@ class _ARViewScreenState extends State<ARViewScreen>
       shadowSoftness: 0.9,
       cameraOrbit: studio
           ? '0deg 75deg ${(105 / _scale).clamp(40, 260).toStringAsFixed(0)}%'
-          : '0deg 75deg 105%',
+          : '0deg 85deg ${_orbitMeters}m',
+      // Preview overlay: fixed camera aimed at the middle of the standing pet,
+      // so the pet's pixel height is set only by the size of this widget.
+      fieldOfView: studio ? null : '${_viewerFovDeg}deg',
+      minCameraOrbit: studio ? null : 'auto auto ${_orbitMeters}m',
+      maxCameraOrbit: studio ? null : 'auto auto ${_orbitMeters}m',
+      disableZoom: studio ? null : true,
+      cameraTarget: studio
+          ? null
+          : '0m ${(_modelHeightM / 2).toStringAsFixed(3)}m 0m',
     );
   }
 
@@ -742,7 +827,11 @@ class _ARViewScreenState extends State<ARViewScreen>
       );
     }
     final media = MediaQuery.of(context);
-    final size = media.size;
+    // The stack lives inside SafeArea and a 500px wide column.
+    final size = Size(
+      math.min(media.size.width, 500.0),
+      media.size.height - media.padding.vertical,
+    );
 
     return PopScope(
       canPop: Navigator.of(context).canPop(),
@@ -764,24 +853,8 @@ class _ARViewScreenState extends State<ARViewScreen>
                     Positioned.fill(
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
-                        onTapUp: (details) {
-                          // Tap anywhere on the floor to position pet
-                          final tappedX =
-                              (details.localPosition.dx / size.width).clamp(
-                                0.10,
-                                0.90,
-                              );
-                          final tappedY =
-                              (details.localPosition.dy / size.height).clamp(
-                                0.20,
-                                0.85,
-                              );
-                          setState(() {
-                            _petPosition = Offset(tappedX, tappedY);
-                            _isPetPlaced = true;
-                          });
-                          _showMessage('$_petName positioned on floor.');
-                        },
+                        onTapUp: (details) =>
+                            _placeFromTap(details.localPosition, size),
                         child: _buildCameraOrFallback(size),
                       ),
                     ),
@@ -827,7 +900,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                                 ),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Aim at floor & tap surface or shutter to place pet',
+                                  'Aim below the horizon and tap the floor to place your pet',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
@@ -995,6 +1068,9 @@ class _ARViewScreenState extends State<ARViewScreen>
   Widget _buildInteractiveSpatialCanvas(Size size) {
     if (!_isPetPlaced) {
       // Reticle targeting guide centered on screen
+      final aimColor = _surfaceDetected
+          ? const Color(0xFF00E5D0)
+          : const Color(0xFFFFA65C);
       return Positioned.fill(
         child: Center(
           child: Container(
@@ -1003,20 +1079,12 @@ class _ARViewScreenState extends State<ARViewScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color:
-                    (_surfaceDetected
-                            ? const Color(0xFF00E5D0)
-                            : const Color(0xFFFFA65C))
-                        .withValues(alpha: 0.85),
+                color: aimColor.withValues(alpha: 0.85),
                 width: 2.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      (_surfaceDetected
-                              ? const Color(0xFF00E5D0)
-                              : const Color(0xFFFFA65C))
-                          .withValues(alpha: 0.3),
+                  color: aimColor.withValues(alpha: 0.3),
                   blurRadius: 16,
                   spreadRadius: 2,
                 ),
@@ -1027,9 +1095,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                 width: 16,
                 height: 16,
                 decoration: BoxDecoration(
-                  color: _surfaceDetected
-                      ? const Color(0xFF00E5D0)
-                      : const Color(0xFFFFA65C),
+                  color: aimColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1039,105 +1105,137 @@ class _ARViewScreenState extends State<ARViewScreen>
       );
     }
 
-    final viewportW = (280.0 * _scale).clamp(160.0, size.width * 0.95);
-    final viewportH = (340.0 * _scale).clamp(200.0, size.height * 0.70);
-
-    // Position calculations with ground parallax anchoring
-    final effectiveX =
-        (_petPosition.dx + (_isGroundAnchored ? _gyroParallax.dx : 0.0)).clamp(
-          0.05,
-          0.95,
+    // Where the pet's feet land on screen, from the floor geometry.
+    final h = size.height;
+    final distance = _viewingDistanceMeters;
+    final feetY =
+        h / 2 +
+        _geo.feetOffsetY(
+          pitchDownRad: _pitchDownRad,
+          distanceM: distance,
+          screenHeightPx: h,
         );
-    final effectiveY =
-        (_petPosition.dy + (_isGroundAnchored ? _gyroParallax.dy : 0.0)).clamp(
-          0.15,
-          0.90,
+    final feetX =
+        size.width / 2 +
+        _geo.offsetX(
+          anchorYawRad: _anchorYawRad,
+          cameraYawRad: _yawRad,
+          screenHeightPx: h,
         );
+    final petPx = _geo.pixelHeight(
+      realHeightM: _modelHeightM,
+      distanceM: distance,
+      screenHeightPx: h,
+    );
+    // The overlay's camera is fixed, so its widget size sets the pet's size:
+    // the pet fills petPx of a square viewportPx x viewportPx widget.
+    final viewportPx =
+        _geo.focalPx(h) *
+        2 *
+        _orbitMeters *
+        math.tan(_viewerFovDeg * math.pi / 360) /
+        distance;
+    final visible =
+        _geo.isInFront(anchorYawRad: _anchorYawRad, cameraYawRad: _yawRad) &&
+        viewportPx.isFinite &&
+        viewportPx < size.height * 4;
 
-    // Mathematically centered horizontally on screen
-    final petX = (effectiveX * size.width) - (viewportW / 2);
-    final petY = (effectiveY * size.height) - (viewportH / 2);
+    final left = feetX - viewportPx / 2;
+    final top = feetY - petPx / 2 - viewportPx / 2;
+    final shadowWidth = (petPx * 0.9).clamp(30.0, 400.0);
 
-    final maxLeft = math.max(0.0, size.width - viewportW);
-    final leftPos = petX.clamp(0.0, maxLeft).toDouble();
-    final maxTop = math.max(60.0, size.height - viewportH - 120.0);
-    final topPos = petY.clamp(60.0, math.max(60.0, maxTop)).toDouble();
-
-    return Positioned(
-      left: leftPos,
-      top: topPos,
-      width: viewportW,
-      height: viewportH,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Positioned.fill(
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Metric Life-Scale Ruler Tag or Speech Bubble
-          if (_showSpeechBubble)
-            _buildSpeechBubble()
-          else if (_isLifeScaleLocked)
-            _buildMetricRulerTag(),
-
-          // The 3D Model Viewer directly over the camera with transparent WebGL
-          Expanded(
+          // Keep the viewer mounted (it launches native AR) but off-screen and
+          // invisible when the anchor is behind the camera.
+          Positioned(
+            left: visible ? left : -4000,
+            top: visible ? top : 0,
+            width: viewportPx.isFinite ? viewportPx.clamp(40.0, 3000.0) : 40,
+            height: viewportPx.isFinite ? viewportPx.clamp(40.0, 3000.0) : 40,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Ground Contact Shadow on the Floor
+                // Ground contact shadow where the feet touch the floor.
                 Positioned(
-                  bottom: 14 * _scale,
-                  child: _buildFloorContactShadow(),
+                  bottom: (viewportPx - petPx) / 2 - shadowWidth * 0.07,
+                  child: _buildFloorContactShadow(shadowWidth),
                 ),
-
-                // Rigged 3D GLB Model
+                // Rigged 3D GLB model
                 _buildModel(studio: false),
-
-                // Floating Drag Handle
-                Positioned(
-                  bottom: 0,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        final newDx =
-                            _petPosition.dx + (details.delta.dx / size.width);
-                        final newDy =
-                            _petPosition.dy + (details.delta.dy / size.height);
-                        _petPosition = Offset(
-                          newDx.clamp(0.1, 0.9),
-                          newDy.clamp(0.2, 0.85),
-                        );
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white24, width: 0.8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.open_with, color: Colors.white, size: 11),
-                          SizedBox(width: 4),
-                          Text(
-                            'Drag to Move',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
+
+          if (visible) ...[
+            // Height tag above the pet's head
+            Positioned(
+              left: feetX - 110,
+              width: 220,
+              top: (feetY - petPx - 34).clamp(70.0, size.height - 200),
+              child: Center(
+                child: _showSpeechBubble
+                    ? _buildSpeechBubble()
+                    : _buildMetricRulerTag(),
+              ),
+            ),
+
+            // Drag handle at the feet: moves the pet across the floor.
+            Positioned(
+              left: feetX - 120,
+              width: 240,
+              top: (feetY + 6).clamp(0.0, size.height - 40),
+              child: Center(
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    final newDistance = _geo.distanceForTap(
+                      pitchDownRad: _pitchDownRad,
+                      tapDyPx: feetY + details.delta.dy - h / 2,
+                      screenHeightPx: h,
+                    );
+                    setState(() {
+                      _anchorYawRad = _geo.yawForTap(
+                        cameraYawRad: _yawRad,
+                        tapDxPx: feetX + details.delta.dx - size.width / 2,
+                        screenHeightPx: h,
+                      );
+                      if (newDistance != null) {
+                        _viewingDistanceMeters = newDistance;
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white24, width: 0.8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.open_with, color: Colors.white, size: 11),
+                        SizedBox(width: 4),
+                        Text(
+                          'Drag to Move',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1168,7 +1266,9 @@ class _ARViewScreenState extends State<ARViewScreen>
             const Icon(Icons.straighten, color: Colors.white, size: 12),
             const SizedBox(width: 5),
             Text(
-              'Height: $heightCm cm ($heightIn in) • 1:1 Life Scale',
+              _arSupport == ArSupport.supported
+                  ? 'Shoulder height $heightCm cm ($heightIn in)'
+                  : 'Shoulder height ~$heightCm cm • approximate preview',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10.5,
@@ -1210,9 +1310,9 @@ class _ARViewScreenState extends State<ARViewScreen>
     );
   }
 
-  Widget _buildFloorContactShadow() {
-    final shadowWidth = (140.0 * _scale).clamp(80.0, 300.0);
-    final shadowHeight = (22.0 * _scale).clamp(12.0, 50.0);
+  Widget _buildFloorContactShadow(double shadowWidth) {
+    final shadowHeight = shadowWidth * 0.16;
+    final blur = shadowWidth * 0.12;
 
     return Container(
       width: shadowWidth,
@@ -1224,9 +1324,9 @@ class _ARViewScreenState extends State<ARViewScreen>
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 18 * _scale,
-            spreadRadius: 2 * _scale,
-            offset: Offset(0, 3 * _scale),
+            blurRadius: blur,
+            spreadRadius: blur / 8,
+            offset: Offset(0, blur / 6),
           ),
         ],
       ),
@@ -1342,13 +1442,27 @@ class _ARViewScreenState extends State<ARViewScreen>
   // SURFACE STATUS HUD BANNER
   // ============================================================
 
+  String get _cameraStatusText {
+    switch (_arSupport) {
+      case ArSupport.supported:
+        return _surfaceDetected
+            ? 'Shutter = real floor AR • tap the floor to preview'
+            : 'Aim at the floor • shutter = real floor AR';
+      case ArSupport.unsupported:
+        return 'Preview only: no ARCore on this phone • size approximate';
+      case ArSupport.checking:
+      case ArSupport.unknown:
+        return _surfaceStatus;
+    }
+  }
+
   Widget _buildSurfaceStatusBanner() {
     final statusText = _is3DStudioMode
         ? '3D Interactive Studio • 360° Inspection & Rigged Animations'
         : !_cameraReady
-        ? 'Virtual floor room • drag to position the model'
-        : _surfaceStatus;
-    final isDetected = _is3DStudioMode || !_cameraReady || _surfaceDetected;
+        ? 'Virtual floor room • tap the floor to place the model'
+        : _cameraStatusText;
+    final isReady = _is3DStudioMode || !_cameraReady || _surfaceDetected;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -1357,7 +1471,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         color: Colors.black.withValues(alpha: 0.70),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDetected ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C),
+          color: isReady ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C),
           width: 1.2,
         ),
         boxShadow: [
@@ -1373,12 +1487,10 @@ class _ARViewScreenState extends State<ARViewScreen>
                 : !_cameraReady
                 ? Icons.grid_on_rounded
                 : (_surfaceDetected
-                      ? Icons.check_circle_rounded
+                      ? Icons.touch_app_rounded
                       : Icons.search_rounded),
             size: 15,
-            color: isDetected
-                ? const Color(0xFF00E5D0)
-                : const Color(0xFFFFA65C),
+            color: isReady ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1394,39 +1506,6 @@ class _ARViewScreenState extends State<ARViewScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (!_is3DStudioMode && _cameraReady && _surfaceDetected) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _isGroundAnchored = !_isGroundAnchored;
-                  _gyroParallax = Offset.zero;
-                });
-                _showMessage(
-                  _isGroundAnchored
-                      ? 'Floor surface locked. Pet stays fixed on ground.'
-                      : 'Floor lock off (free-floating).',
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _isGroundAnchored
-                      ? const Color(0xFF008F82)
-                      : Colors.white24,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _isGroundAnchored ? 'LOCKED' : 'UNLOCK',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1507,7 +1586,9 @@ class _ARViewScreenState extends State<ARViewScreen>
           _scale = _calculateLifeScale(dist);
         });
         _showMessage(
-          'Set to $label: $_petName is calibrated at ${_realLifeHeightCm.toStringAsFixed(0)} cm life-scale.',
+          _is3DStudioMode
+              ? 'Set to $label: $_petName is calibrated at ${_realLifeHeightCm.toStringAsFixed(0)} cm life-scale.'
+              : '$_petName now stands $label from you.',
         );
       },
       child: Container(
@@ -1555,84 +1636,66 @@ class _ARViewScreenState extends State<ARViewScreen>
   Widget _buildRightControls() {
     return Column(
       children: [
-        // 1:1 Life Size Mode Button
-        _roundButton(
-          icon: Icons.straighten,
-          tooltip: _isLifeScaleLocked
-              ? '1:1 Life Size: LOCKED'
-              : '1:1 Life Size: OFF',
-          backgroundColor: _isLifeScaleLocked
-              ? const Color(0xFF008F82)
-              : Colors.white,
-          iconColor: _isLifeScaleLocked ? Colors.white : darkBrown,
-          onTap: () {
-            setState(() {
-              _isLifeScaleLocked = !_isLifeScaleLocked;
-              if (_isLifeScaleLocked) {
-                _scale = _calculateLifeScale(_viewingDistanceMeters);
-              }
-            });
-            _showMessage(
-              _isLifeScaleLocked
-                  ? '1:1 Life Size locked: ${_realLifeHeightCm.toStringAsFixed(0)} cm true scale.'
-                  : 'Manual scaling enabled.',
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-        if (!_is3DStudioMode)
+        // Studio zoom controls. In camera preview the size comes from the
+        // distance, so resizing is not offered (it would break life size).
+        if (_is3DStudioMode) ...[
           _roundButton(
-            icon: _isGroundAnchored ? Icons.anchor : Icons.anchor_outlined,
-            tooltip: _isGroundAnchored
-                ? 'Floor Anchor: ON'
-                : 'Floor Anchor: OFF',
-            backgroundColor: _isGroundAnchored
+            icon: Icons.straighten,
+            tooltip: _isLifeScaleLocked
+                ? '1:1 Life Size: LOCKED'
+                : '1:1 Life Size: OFF',
+            backgroundColor: _isLifeScaleLocked
                 ? const Color(0xFF008F82)
                 : Colors.white,
-            iconColor: _isGroundAnchored ? Colors.white : darkBrown,
+            iconColor: _isLifeScaleLocked ? Colors.white : darkBrown,
             onTap: () {
               setState(() {
-                _isGroundAnchored = !_isGroundAnchored;
-                _gyroParallax = Offset.zero;
+                _isLifeScaleLocked = !_isLifeScaleLocked;
+                if (_isLifeScaleLocked) {
+                  _scale = _calculateLifeScale(_viewingDistanceMeters);
+                }
               });
               _showMessage(
-                _isGroundAnchored
-                    ? 'Floor surface lock enabled.'
-                    : 'Free-floating mode enabled.',
+                _isLifeScaleLocked
+                    ? '1:1 Life Size locked: ${_realLifeHeightCm.toStringAsFixed(0)} cm true scale.'
+                    : 'Manual scaling enabled.',
               );
             },
           ),
-        if (!_is3DStudioMode) const SizedBox(height: 10),
+          const SizedBox(height: 10),
+        ],
         _roundButton(
           icon: Icons.refresh,
           tooltip: 'Reset AR Position',
           onTap: _resetAR,
         ),
         const SizedBox(height: 10),
-        _roundButton(
-          icon: Icons.zoom_in,
-          tooltip: 'Enlarge Pet',
-          onTap: () {
-            setState(() {
-              _isLifeScaleLocked = false;
-              _scale = (_scale + 0.15).clamp(0.4, 2.5);
-            });
-            _showMessage('Scale: ${(_scale * 100).toInt()}% (Custom)');
-          },
-        ),
-        const SizedBox(height: 10),
-        _roundButton(
-          icon: Icons.zoom_out,
-          tooltip: 'Shrink Pet',
-          onTap: () {
-            setState(() {
-              _isLifeScaleLocked = false;
-              _scale = (_scale - 0.15).clamp(0.4, 2.5);
-            });
-            _showMessage('Scale: ${(_scale * 100).toInt()}% (Custom)');
-          },
-        ),
-        const SizedBox(height: 10),
+        if (_is3DStudioMode) ...[
+          _roundButton(
+            icon: Icons.zoom_in,
+            tooltip: 'Enlarge Pet',
+            onTap: () {
+              setState(() {
+                _isLifeScaleLocked = false;
+                _scale = (_scale + 0.15).clamp(0.4, 2.5);
+              });
+              _showMessage('Scale: ${(_scale * 100).toInt()}% (Custom)');
+            },
+          ),
+          const SizedBox(height: 10),
+          _roundButton(
+            icon: Icons.zoom_out,
+            tooltip: 'Shrink Pet',
+            onTap: () {
+              setState(() {
+                _isLifeScaleLocked = false;
+                _scale = (_scale - 0.15).clamp(0.4, 2.5);
+              });
+              _showMessage('Scale: ${(_scale * 100).toInt()}% (Custom)');
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
         _roundButton(
           icon: Icons.camera_alt,
           tooltip: 'Snapshot options',
@@ -1956,22 +2019,22 @@ class _ARViewScreenState extends State<ARViewScreen>
             children: [
               _buildHelpRow(
                 Icons.touch_app,
-                'Tap anywhere on your floor to position $_petName instantly.',
+                'Real floor AR (ARCore phones): tap the round shutter button and move the phone slowly over a lit, textured floor.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(
                 Icons.open_with,
-                'Use the "Drag to Move" handle beneath the pet to slide across the room.',
+                'Preview: aim below the horizon and tap the floor to stand $_petName there. Size is approximate and the pet does not follow you as you walk.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(
                 Icons.straighten,
-                'Tap 1:1 Life Size on the right to lock accurate physical dimensions (cm/inches).',
+                'Use the "Drag to Move" handle under the pet to slide it across the floor.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(
                 Icons.pin_drop,
-                'Select distance (1.0m, 1.5m, 2.0m) to calibrate perspective depth.',
+                'Pick 1.0m, 1.5m or 2.0m to stand the pet that far from you.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(

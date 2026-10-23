@@ -1,0 +1,98 @@
+"""Rescale a skinned, animated GLB so its standing height is a real size in metres.
+
+glTF units are metres, and Android Scene Viewer shows a model at the size stored in
+the file. The pet models were authored at arbitrary scale (dog ~40 units, cat ~13), so
+they appear at the wrong size in AR. This bakes a uniform scale into the data (vertex
+positions, joint translations, inverse bind matrices, translation animation tracks)
+instead of adding a parent-node scale, which skinned meshes ignore in some viewers.
+
+    python scripts/normalize_glb.py dog.glb dog_medium.glb --type dog --height-m 0.56
+
+--height-m is the height of the *idle animation pose*; the stored bind-pose box is
+smaller by IDLE_POSE_RATIO (see glb_tools.py).
+"""
+import argparse
+import struct
+
+from glb_tools import IDLE_POSE_RATIO, model_height, read_glb, write_glb
+
+
+def _accessor_span(gltf, idx, comps):
+    acc = gltf["accessors"][idx]
+    if acc["componentType"] != 5126:
+        raise ValueError(f"accessor {idx} is not float32")
+    view = gltf["bufferViews"][acc["bufferView"]]
+    start = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+    stride = view.get("byteStride") or comps * 4
+    return acc, start, stride
+
+
+def _scale_floats(gltf, binary, idx, comps, positions, factor):
+    """Multiply the given component positions of every element of an accessor."""
+    acc, start, stride = _accessor_span(gltf, idx, comps)
+    for i in range(acc["count"]):
+        base = start + i * stride
+        vals = list(struct.unpack_from(f"<{comps}f", binary, base))
+        for p in positions:
+            vals[p] *= factor
+        struct.pack_into(f"<{comps}f", binary, base, *vals)
+    if list(positions) == list(range(comps)) and "min" in acc and "max" in acc:
+        acc["min"] = [v * factor for v in acc["min"]]
+        acc["max"] = [v * factor for v in acc["max"]]
+
+
+def normalize(gltf, binary, target_height_m):
+    current = model_height(gltf)
+    factor = target_height_m / current
+    done = set()
+
+    def once(idx):
+        if idx in done:
+            return False
+        done.add(idx)
+        return True
+
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            idx = prim["attributes"]["POSITION"]
+            if once(("pos", idx)):
+                _scale_floats(gltf, binary, idx, 3, range(3), factor)
+    for skin in gltf.get("skins", []):
+        idx = skin.get("inverseBindMatrices")
+        if idx is not None and once(("ibm", idx)):
+            _scale_floats(gltf, binary, idx, 16, (12, 13, 14), factor)
+    for anim in gltf.get("animations", []):
+        for ch in anim["channels"]:
+            if ch["target"]["path"] != "translation":
+                continue
+            idx = anim["samplers"][ch["sampler"]]["output"]
+            if once(("anim", idx)):
+                _scale_floats(gltf, binary, idx, 3, range(3), factor)
+    for node in gltf["nodes"]:
+        if "translation" in node:
+            node["translation"] = [v * factor for v in node["translation"]]
+    asset = gltf.setdefault("asset", {})
+    asset.setdefault("extras", {})["normalizedHeightM"] = round(target_height_m, 4)
+    return current, factor
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("src")
+    ap.add_argument("dst")
+    ap.add_argument("--type", choices=sorted(IDLE_POSE_RATIO), required=True)
+    ap.add_argument("--height-m", type=float, required=True,
+                    help="target standing height (top of head, idle pose) in metres")
+    args = ap.parse_args()
+    gltf, binary = read_glb(args.src)
+    bind_target = args.height_m / IDLE_POSE_RATIO[args.type]
+    before, factor = normalize(gltf, binary, bind_target)
+    after = model_height(gltf)
+    assert abs(after - bind_target) < 1e-4, (after, bind_target)
+    write_glb(args.dst, gltf, binary)
+    print(f"{args.src}: bind {before:.3f} -> {after:.3f} m (x{factor:.5f}), "
+          f"idle pose ~{args.height_m:.2f} m, saved {args.dst}")
+
+
+if __name__ == "__main__":
+    main()

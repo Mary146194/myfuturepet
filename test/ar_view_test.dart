@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:myfuturepet/ar_model_url.dart';
 import 'package:myfuturepet/screens/ar_view_screen.dart';
+import 'package:myfuturepet/services/ar_support_service.dart';
 import 'package:myfuturepet/services/pet_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -58,6 +59,7 @@ void main() {
     WidgetTester tester, {
     Map<String, dynamic>? pet,
     ARSessionLauncher? arSessionLauncher,
+    ArSupport support = ArSupport.unknown,
   }) async {
     tester.view.physicalSize = const Size(430, 950);
     tester.view.devicePixelRatio = 1;
@@ -70,6 +72,7 @@ void main() {
           petService: service,
           cameraSupported: false,
           arSessionLauncher: arSessionLauncher,
+          arSupportChecker: () async => support,
           modelBuilder: (_, url, studio) => Text(
             '${studio ? 'Studio' : 'Camera'}: $url',
             key: const ValueKey('model-url'),
@@ -155,8 +158,35 @@ void main() {
     expect(find.textContaining('Virtual floor room'), findsOneWidget);
     expect(find.textContaining('Floor Surface Detected'), findsNothing);
     expect(find.text('3D Studio'), findsOneWidget);
-    expect(find.byTooltip('Enlarge Pet'), findsOneWidget);
+    // Life size comes from distance in camera mode, so resizing is not offered.
+    expect(find.byTooltip('Enlarge Pet'), findsNothing);
+    expect(find.byTooltip('Shrink Pet'), findsNothing);
+    expect(find.byTooltip('Floor Anchor: ON'), findsNothing);
+    expect(find.text('Distance:'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('preview labels itself approximate unless ARCore is supported', (
+    tester,
+  ) async {
+    const pet = {
+      'id': 'one',
+      'name': 'Muning',
+      'type': 'cat',
+      'model_url': 'https://example.test/muning.glb',
+    };
+    await pumpAR(tester, pet: pet, support: ArSupport.unsupported);
+    await tester.tap(find.text('Camera AR'));
+    await tester.pump();
+    expect(find.textContaining('approximate preview'), findsOneWidget);
+    expect(find.textContaining('Floor Surface Detected'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox()); // drop the previous screen state
+    await pumpAR(tester, pet: pet, support: ArSupport.supported);
+    await tester.tap(find.text('Camera AR'));
+    await tester.pump();
+    expect(find.textContaining('approximate preview'), findsNothing);
+    expect(find.textContaining('Shoulder height 25 cm'), findsOneWidget);
   });
 
   testWidgets('Camera shutter requests native floor placement', (tester) async {
@@ -178,7 +208,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('camera-ar-shutter')));
     await tester.pump();
     expect(launches, 1);
-    expect(find.textContaining('Camera AR is unavailable'), findsNothing);
+    expect(find.textContaining('Floor AR is unavailable'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -198,7 +228,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('camera-ar-shutter')));
     await tester.pump();
-    expect(find.textContaining('Camera AR is unavailable'), findsOneWidget);
+    expect(find.textContaining('Floor AR is unavailable'), findsOneWidget);
     expect(find.textContaining('Virtual floor room'), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-ar-shutter')), findsOneWidget);
     expect(tester.takeException(), isNull);
