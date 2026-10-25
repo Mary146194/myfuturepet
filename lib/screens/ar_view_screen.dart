@@ -9,6 +9,7 @@ import '../ar_floor_geometry.dart';
 import '../ar_model_url.dart';
 import '../services/ar_support_service.dart';
 import '../services/pet_service.dart';
+import '../widgets/arcore_pet_view.dart';
 
 typedef ARModelBuilder =
     Widget Function(BuildContext context, String modelUrl, bool studio);
@@ -99,6 +100,14 @@ class _ARViewScreenState extends State<ARViewScreen>
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   ArSupport _arSupport = ArSupport.checking;
+  // On ARCore phones Camera AR is the real in-app ARCore view instead.
+  final GlobalKey<ArCorePetViewState> _arCoreKey = GlobalKey();
+  String _arCoreStatus = 'Starting ARCore…';
+  bool _arCoreReady = false;
+  bool get _useArCore =>
+      _arSupport == ArSupport.supported &&
+      _cameraSupported &&
+      _modelGlbUrl != null;
   bool _surfaceDetected = false; // true while the phone is aimed at the floor
   String _surfaceStatus = 'Aim at the floor, then tap to place your pet';
   double _pitchDownRad = 0.35; // used until sensors report (20 degrees down)
@@ -401,10 +410,29 @@ class _ARViewScreenState extends State<ARViewScreen>
     final checker = widget.arSupportChecker ?? ArSupportService().check;
     try {
       final support = await checker();
-      if (mounted) setState(() => _arSupport = support);
+      if (!mounted) return;
+      if (support == ArSupport.supported && _cameraSupported) {
+        // ARCore needs the camera to itself: stop the plain preview first.
+        await _releaseCameraForArCore();
+        if (!mounted) return;
+        _isPetPlaced = false;
+      }
+      setState(() => _arSupport = support);
     } catch (_) {
       if (mounted) setState(() => _arSupport = ArSupport.unknown);
     }
+  }
+
+  Future<void> _releaseCameraForArCore() async {
+    _accelerometerSubscription?.cancel();
+    _gyroscopeSubscription?.cancel();
+    try {
+      await _initializeCameraFuture;
+    } catch (_) {}
+    final controller = _cameraController;
+    _cameraController = null;
+    _cameraReady = false;
+    await controller?.dispose();
   }
 
   Future<void> _loadAvailablePets() async {
@@ -457,7 +485,8 @@ class _ARViewScreenState extends State<ARViewScreen>
       }
     } else if (state == AppLifecycleState.resumed &&
         _cameraSupported &&
-        !_is3DStudioMode) {
+        !_is3DStudioMode &&
+        !_useArCore) {
       _initializeCamera();
     }
   }
@@ -476,59 +505,57 @@ class _ARViewScreenState extends State<ARViewScreen>
     // The default 200 ms sampling made the pet jump 5 times a second.
     const period = SensorInterval.gameInterval;
     try {
-      _accelerometerSubscription = accelerometerEventStream(
-        samplingPeriod: period,
-      ).listen((event) {
-        _accel = [event.x, event.y, event.z];
-        // With a gyro, gravity is fused in the gyro listener. Without one
-        // (some budget phones), fall back to a heavy low-pass here.
-        if (_gravity != null && _hasGyro) return;
-        final g = _gravity;
-        const a = 0.1;
-        final gx = g == null ? event.x : g[0] + a * (event.x - g[0]);
-        final gy = g == null ? event.y : g[1] + a * (event.y - g[1]);
-        final gz = g == null ? event.z : g[2] + a * (event.z - g[2]);
-        _gravity = [gx, gy, gz];
-        _pitchDownRad = pitchDownFromGravity(gx, gy, gz);
-        _refreshFromSensors();
-      }, onError: (_) {});
+      _accelerometerSubscription =
+          accelerometerEventStream(samplingPeriod: period).listen((event) {
+            _accel = [event.x, event.y, event.z];
+            // With a gyro, gravity is fused in the gyro listener. Without one
+            // (some budget phones), fall back to a heavy low-pass here.
+            if (_gravity != null && _hasGyro) return;
+            final g = _gravity;
+            const a = 0.1;
+            final gx = g == null ? event.x : g[0] + a * (event.x - g[0]);
+            final gy = g == null ? event.y : g[1] + a * (event.y - g[1]);
+            final gz = g == null ? event.z : g[2] + a * (event.z - g[2]);
+            _gravity = [gx, gy, gz];
+            _pitchDownRad = pitchDownFromGravity(gx, gy, gz);
+            _refreshFromSensors();
+          }, onError: (_) {});
 
-      _gyroscopeSubscription = gyroscopeEventStream(
-        samplingPeriod: period,
-      ).listen((event) {
-        _hasGyro = true;
-        final g = _gravity;
-        final a = _accel;
-        final last = _lastGyroTime;
-        _lastGyroTime = event.timestamp;
-        if (g == null || a == null || last == null) return;
-        final dt = event.timestamp.difference(last).inMicroseconds / 1e6;
-        if (dt <= 0 || dt > 0.5) return;
-        final fused = fuseGravity(
-          g,
-          gx: event.x,
-          gy: event.y,
-          gz: event.z,
-          ax: a[0],
-          ay: a[1],
-          az: a[2],
-          dt: dt,
-        );
-        _gravity = fused;
-        _pitchDownRad = pitchDownFromGravity(fused[0], fused[1], fused[2]);
-        final yawRate = yawRateFromGyro(
-          gx: event.x,
-          gy: event.y,
-          gz: event.z,
-          ax: fused[0],
-          ay: fused[1],
-          az: fused[2],
-        );
-        // Ignore tiny rates: that is gyro bias, and integrating it slides the
-        // pet sideways while the phone is held still.
-        if (yawRate.abs() > _gyroDeadZoneRadPerSec) _yawRad += yawRate * dt;
-        _refreshFromSensors();
-      }, onError: (_) {});
+      _gyroscopeSubscription = gyroscopeEventStream(samplingPeriod: period)
+          .listen((event) {
+            _hasGyro = true;
+            final g = _gravity;
+            final a = _accel;
+            final last = _lastGyroTime;
+            _lastGyroTime = event.timestamp;
+            if (g == null || a == null || last == null) return;
+            final dt = event.timestamp.difference(last).inMicroseconds / 1e6;
+            if (dt <= 0 || dt > 0.5) return;
+            final fused = fuseGravity(
+              g,
+              gx: event.x,
+              gy: event.y,
+              gz: event.z,
+              ax: a[0],
+              ay: a[1],
+              az: a[2],
+              dt: dt,
+            );
+            _gravity = fused;
+            _pitchDownRad = pitchDownFromGravity(fused[0], fused[1], fused[2]);
+            final yawRate = yawRateFromGyro(
+              gx: event.x,
+              gy: event.y,
+              gz: event.z,
+              ax: fused[0],
+              ay: fused[1],
+              az: fused[2],
+            );
+            // Ignore tiny rates: that is gyro bias, and integrating it slides the
+            // pet sideways while the phone is held still.
+            if (yawRate.abs() > _gyroDeadZoneRadPerSec) _yawRad += yawRate * dt;
+            _refreshFromSensors();
+          }, onError: (_) {});
     } catch (e) {
       debugPrint('Sensor initialization error: $e');
     }
@@ -613,6 +640,12 @@ class _ARViewScreenState extends State<ARViewScreen>
       await _initializeCameraFuture;
 
       if (!mounted) return;
+      if (_useArCore || _cameraController != controller) {
+        // ARCore took over while the preview was starting.
+        if (_cameraController == controller) _cameraController = null;
+        await controller.dispose();
+        return;
+      }
       setState(() {
         _cameraReady = true;
         _cameraError = false;
@@ -658,6 +691,10 @@ class _ARViewScreenState extends State<ARViewScreen>
   }
 
   void _resetAR() {
+    if (_useArCore && !_is3DStudioMode) {
+      _arCoreKey.currentState?.removePet();
+      return;
+    }
     setState(() {
       _viewerReset++;
       _anchorYawRad = _yawRad; // straight ahead of where the phone points now
@@ -689,6 +726,11 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   Future<void> _onCameraShutter() async {
     if (_arSessionLaunching) return;
+    if (_useArCore) {
+      // Already in real floor AR: the shutter lifts the pet to place again.
+      await _arCoreKey.currentState?.removePet();
+      return;
+    }
     if (!_cameraSupported && widget.arSessionLauncher == null) {
       _togglePlacement();
       return;
@@ -879,7 +921,21 @@ class _ARViewScreenState extends State<ARViewScreen>
               child: Stack(
                 children: [
                   // 1. Live Camera or Virtual Room Fallback (when in Camera mode)
-                  if (!_is3DStudioMode)
+                  if (!_is3DStudioMode && _useArCore)
+                    Positioned.fill(
+                      child: ArCorePetView(
+                        key: _arCoreKey,
+                        modelUrl: _modelGlbUrl!,
+                        petName: _petName,
+                        onStatus: (status, ready) => setState(() {
+                          _arCoreStatus = status;
+                          _arCoreReady = ready;
+                        }),
+                        onPlacedChanged: (placed) =>
+                            setState(() => _isPetPlaced = placed),
+                      ),
+                    ),
+                  if (!_is3DStudioMode && !_useArCore)
                     Positioned.fill(
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
@@ -899,7 +955,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                     ),
 
                   // 1.5 Floor Placement Guide Reticle (only when placing in camera mode)
-                  if (!_is3DStudioMode && !_isPetPlaced)
+                  if (!_is3DStudioMode && !_isPetPlaced && !_useArCore)
                     Positioned(
                       bottom: size.height * 0.35,
                       left: 0,
@@ -945,7 +1001,8 @@ class _ARViewScreenState extends State<ARViewScreen>
                     ),
 
                   // 2. Interactive 3D Pet Spatial Canvas (only in camera mode)
-                  if (!_is3DStudioMode) _buildInteractiveSpatialCanvas(size),
+                  if (!_is3DStudioMode && !_useArCore)
+                    _buildInteractiveSpatialCanvas(size),
 
                   // 3. Top Header Bar (Back, Mode Tabs, Options)
                   Positioned(
@@ -964,7 +1021,8 @@ class _ARViewScreenState extends State<ARViewScreen>
                   ),
 
                   // Distance calibration remains available in both views.
-                  if (_is3DStudioMode || _isLifeScaleLocked)
+                  // ARCore measures real distance, so no calibration there.
+                  if (_is3DStudioMode || (_isLifeScaleLocked && !_useArCore))
                     Positioned(
                       top: 114,
                       left: 16,
@@ -1489,10 +1547,16 @@ class _ARViewScreenState extends State<ARViewScreen>
   Widget _buildSurfaceStatusBanner() {
     final statusText = _is3DStudioMode
         ? '3D Interactive Studio • 360° Inspection & Rigged Animations'
+        : _useArCore
+        ? _arCoreStatus
         : !_cameraReady
         ? 'Virtual floor room • tap the floor to place the model'
         : _cameraStatusText;
-    final isReady = _is3DStudioMode || !_cameraReady || _surfaceDetected;
+    final isReady = _is3DStudioMode
+        ? true
+        : _useArCore
+        ? _arCoreReady
+        : !_cameraReady || _surfaceDetected;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -1514,6 +1578,10 @@ class _ARViewScreenState extends State<ARViewScreen>
           Icon(
             _is3DStudioMode
                 ? Icons.view_in_ar_rounded
+                : _useArCore
+                ? (_arCoreReady
+                      ? Icons.touch_app_rounded
+                      : Icons.search_rounded)
                 : !_cameraReady
                 ? Icons.grid_on_rounded
                 : (_surfaceDetected
