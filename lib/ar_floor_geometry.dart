@@ -10,6 +10,70 @@ double modelHeightMeters({required String petType, required String petSize}) {
   return 0.56;
 }
 
+/// Shoulder (withers) height in centimetres for the same size classes. The
+/// model is taller than this because its height includes the raised head.
+double shoulderHeightCm({required String petType, required String petSize}) {
+  if (petType.toLowerCase() == 'cat') return 25;
+  final size = petSize.toUpperCase();
+  if (size.contains('SMALL') || size.contains('TOY')) return 28;
+  if (size.contains('LARGE') || size.contains('XL')) return 60;
+  return 45;
+}
+
+/// One wording for pet height everywhere, e.g. "56 cm tall • 45 cm at shoulder".
+String petHeightLabel({required String petType, required String petSize}) {
+  final tall = modelHeightMeters(petType: petType, petSize: petSize) * 100;
+  final shoulder = shoulderHeightCm(petType: petType, petSize: petSize);
+  return '${tall.round()} cm tall • ${shoulder.round()} cm at shoulder';
+}
+
+/// ARCore placement is only trusted on a floor tracked for a moment, without a
+/// tracking problem, and within this range: farther planes have the weakest
+/// scale and the pet just looks small.
+const double minPlacementDistanceM = 0.5;
+const double maxPlacementDistanceM = 4.0;
+const int minFloorAgeMs = 1000;
+
+/// User-facing advice for an ARCore TrackingFailureReason name, or null when
+/// tracking is fine.
+String? trackingHint(String? reason) {
+  switch (reason) {
+    case null:
+    case 'NONE':
+      return null;
+    case 'INSUFFICIENT_LIGHT':
+      return 'Too dark: turn on a light';
+    case 'EXCESSIVE_MOTION':
+      return 'Moving too fast: move the phone slower';
+    case 'INSUFFICIENT_FEATURES':
+      return 'Floor too plain: aim at a textured part of the floor';
+    case 'CAMERA_UNAVAILABLE':
+      return 'Camera busy: close other camera apps';
+    default:
+      return 'Tracking lost: move the phone slowly';
+  }
+}
+
+/// Why a tap on the floor must not place the pet yet, or null when it may.
+String? placementBlockReason({
+  required double distanceM,
+  required String? trackingFailure,
+  required int floorAgeMs,
+}) {
+  final hint = trackingHint(trackingFailure);
+  if (hint != null) return hint;
+  if (floorAgeMs < minFloorAgeMs) {
+    return 'Hold on, the floor is still settling. Tap again in a second.';
+  }
+  if (distanceM > maxPlacementDistanceM) {
+    return 'That spot is too far. Tap the floor within 4 m.';
+  }
+  if (distanceM < minPlacementDistanceM) {
+    return 'Too close. Step back a little and tap again.';
+  }
+  return null;
+}
+
 /// Sensor-only floor placement for phones without ARCore.
 ///
 /// Treats the floor as a flat plane [cameraHeightM] below the phone. A point on
@@ -48,8 +112,7 @@ class FloorGeometry {
     required double tapDyPx,
     required double screenHeightPx,
   }) {
-    final angle =
-        pitchDownRad + math.atan(tapDyPx / focalPx(screenHeightPx));
+    final angle = pitchDownRad + math.atan(tapDyPx / focalPx(screenHeightPx));
     if (angle < minFloorAngleRad) return null;
     return (cameraHeightM / math.tan(angle)).clamp(minDistanceM, maxDistanceM);
   }

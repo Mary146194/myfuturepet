@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:share_plus/share_plus.dart';
 import '../ar_floor_geometry.dart';
 import '../ar_model_url.dart';
 import '../services/ar_support_service.dart';
@@ -129,17 +130,11 @@ class _ARViewScreenState extends State<ARViewScreen>
       1.5; // Distance from the phone to where the pet stands on the floor
 
   /// Physical shoulder height of the pet in centimeters.
-  double get _realLifeHeightCm {
-    final size = _petSize.toUpperCase();
-    if (_petType == 'cat') return 25.0; // Domestic cat / kitten
-    if (size.contains('SMALL') || size.contains('TOY')) {
-      return 28.0; // Small dog (Shih Tzu, Chihuahua)
-    }
-    if (size.contains('LARGE') || size.contains('XL')) {
-      return 60.0; // Large dog (Labrador, Golden Retriever, Sky)
-    }
-    return 45.0; // Medium dog baseline (Standard Aspin)
-  }
+  double get _realLifeHeightCm =>
+      shoulderHeightCm(petType: _petType, petSize: _petSize);
+
+  String get _heightLabel =>
+      petHeightLabel(petType: _petType, petSize: _petSize);
 
   /// Calculates optical perspective scale factor based on viewing distance.
   /// Standard baseline: Medium dog (45cm) at 1.5m corresponds to scale factor 1.0.
@@ -484,6 +479,10 @@ class _ARViewScreenState extends State<ARViewScreen>
         controller?.dispose();
       }
     } else if (state == AppLifecycleState.resumed &&
+        _arSupport == ArSupport.needsInstall) {
+      _loadArSupport(); // back from Google's AR install screen
+    }
+    if (state == AppLifecycleState.resumed &&
         _cameraSupported &&
         !_is3DStudioMode &&
         !_useArCore) {
@@ -729,6 +728,11 @@ class _ARViewScreenState extends State<ARViewScreen>
     if (_useArCore) {
       // Already in real floor AR: the shutter lifts the pet to place again.
       await _arCoreKey.currentState?.removePet();
+      return;
+    }
+    if (_arSupport == ArSupport.needsInstall) {
+      // Google's install screen opens; the check re-runs when the app resumes.
+      await ArSupportService().requestInstall();
       return;
     }
     if (!_cameraSupported && widget.arSessionLauncher == null) {
@@ -1330,8 +1334,6 @@ class _ARViewScreenState extends State<ARViewScreen>
   }
 
   Widget _buildMetricRulerTag() {
-    final heightCm = _realLifeHeightCm.toStringAsFixed(0);
-    final heightIn = (_realLifeHeightCm / 2.54).toStringAsFixed(1);
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1355,8 +1357,8 @@ class _ARViewScreenState extends State<ARViewScreen>
             const SizedBox(width: 5),
             Text(
               _arSupport == ArSupport.supported
-                  ? 'Shoulder height $heightCm cm ($heightIn in)'
-                  : 'Shoulder height ~$heightCm cm • approximate preview',
+                  ? _heightLabel
+                  : '~$_heightLabel • approximate preview',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10.5,
@@ -1536,6 +1538,8 @@ class _ARViewScreenState extends State<ARViewScreen>
         return _surfaceDetected
             ? 'Shutter = real floor AR • tap the floor to preview'
             : 'Aim at the floor • shutter = real floor AR';
+      case ArSupport.needsInstall:
+        return 'Tap the shutter to install Google AR services for real floor AR';
       case ArSupport.unsupported:
         return 'Preview only: no ARCore on this phone • size approximate';
       case ArSupport.checking:
@@ -1713,6 +1717,27 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   Future<void> _takeSnapshot() async {
     if (!mounted) return;
+    if (_useArCore && !_is3DStudioMode) {
+      final png = await _arCoreKey.currentState?.snapshot();
+      if (!mounted) return;
+      if (png == null) {
+        _showMessage('Could not capture the AR view. Try again.');
+        return;
+      }
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              png,
+              mimeType: 'image/png',
+              name: 'my_future_pet_ar.png',
+            ),
+          ],
+          text: 'Meet $_petName in my room, with My Future Pet!',
+        ),
+      );
+      return;
+    }
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1922,7 +1947,6 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   Widget _buildPetInfoCard() {
-    final heightText = '${_realLifeHeightCm.toStringAsFixed(0)} cm';
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -1968,7 +1992,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                   ),
                 ),
                 Text(
-                  '$_petBreed • $_petSize ($heightText height)',
+                  '$_petBreed • $_petSize • $_heightLabel',
                   style: const TextStyle(
                     color: Color(0xFF6A7982),
                     fontSize: 12,

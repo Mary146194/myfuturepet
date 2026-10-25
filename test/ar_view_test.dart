@@ -186,7 +186,7 @@ void main() {
     await tester.tap(find.text('Camera AR'));
     await tester.pump();
     expect(find.textContaining('approximate preview'), findsNothing);
-    expect(find.textContaining('Shoulder height 25 cm'), findsOneWidget);
+    expect(find.text('30 cm tall • 25 cm at shoulder'), findsOneWidget);
   });
 
   testWidgets('Camera shutter requests native floor placement', (tester) async {

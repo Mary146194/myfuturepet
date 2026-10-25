@@ -146,6 +146,7 @@ class ArView(
                 "transformationChanged" -> {
                     handleTransformNode(call, result)
                 }
+                "faceCamera" -> handleFaceCamera(call, result)
                 else -> result.notImplemented()
             }
         }
@@ -315,6 +316,8 @@ class ArView(
                     isPositionEditable = handlePans
                     isRotationEditable = handleRotation
                     name = nodeData["name"] as? String
+                    // MyFuturePet: shadow on the detected floor grounds the pet.
+                    isShadowCaster = true
                 }
             } ?: run {
                 null
@@ -631,6 +634,27 @@ class ArView(
         }
     }
 
+    // MyFuturePet: turn a node about the vertical so its +Z (the pet's front)
+    // points at the camera. Done here because the generic transform path
+    // mixes radians and degrees.
+    private fun handleFaceCamera(
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val node = call.argument<String>("name")?.let { nodesMap[it] }
+        if (node == null) {
+            result.error("NODE_NOT_FOUND", "Node not found", null)
+            return
+        }
+        val camera = sceneView.cameraNode.worldPosition
+        val pet = node.worldPosition
+        val yawDeg = Math.toDegrees(
+            kotlin.math.atan2((camera.x - pet.x).toDouble(), (camera.z - pet.z).toDouble())
+        ).toFloat()
+        node.worldRotation = Rotation(0f, yawDeg, 0f)
+        result.success(null)
+    }
+
     private fun handleRemoveNode(
         call: MethodCall,
         result: MethodChannel.Result,
@@ -934,8 +958,11 @@ class ArView(
     ) {
         try {
             val showPlanes = call.argument<Boolean>("showPlanes") ?: false
+            // MyFuturePet: hide only the dots; a disabled renderer would also
+            // drop the pet's shadow on the floor.
             sceneView.apply {
-                planeRenderer.isEnabled = showPlanes
+                planeRenderer.isEnabled = true
+                planeRenderer.isVisible = showPlanes
             }
             result.success(null)
         } catch (e: Exception) {

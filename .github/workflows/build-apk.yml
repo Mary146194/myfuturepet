@@ -36,6 +36,21 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Optional: sign with the shared key so updates install over old APKs.
+      # Secrets: MFP_KEYSTORE_BASE64, MFP_KEYSTORE_PASSWORD, MFP_KEY_ALIAS, MFP_KEY_PASSWORD.
+      - name: Load shared signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.MFP_KEYSTORE_BASE64 }}
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/mfp.jks"
+          {
+            echo "MFP_KEYSTORE_PATH=$RUNNER_TEMP/mfp.jks"
+            echo "MFP_KEYSTORE_PASSWORD=${{ secrets.MFP_KEYSTORE_PASSWORD }}"
+            echo "MFP_KEY_ALIAS=${{ secrets.MFP_KEY_ALIAS }}"
+            echo "MFP_KEY_PASSWORD=${{ secrets.MFP_KEY_PASSWORD }}"
+          } >> "$GITHUB_ENV"
+
       - name: Build Android Debug APK
         run: flutter build apk --debug
 
@@ -57,6 +72,8 @@ jobs:
           body: |
             Debug APK for My Future Pet (BSIT Capstone, Jagna Animal Lover and Rescue Group)
             - Real floor AR inside the app on ARCore phones: finds the floor, anchors the pet where you tap, real size
+            - Placement only on a settled floor within 4 m, tracking tips (too dark / too fast), live distance readout
+            - Pet faces you, casts a shadow, floor dots hide after placing; AR snapshot shares a photo
             - Sensor-based floor preview with approximate size on phones without ARCore
             - Life-size 3D pet models; static (no animation) models hide the Sit and Wag Tail buttons
           draft: false

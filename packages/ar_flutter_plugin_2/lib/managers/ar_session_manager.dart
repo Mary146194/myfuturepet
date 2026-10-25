@@ -13,6 +13,7 @@ import 'package:vector_math/vector_math_64.dart';
 typedef ARHitResultHandler = void Function(List<ARHitTestResult> hits);
 typedef ARPlaneResultHandler = void Function(int planeCount);
 typedef ErrorHandler = void Function(String error);
+typedef TrackingFailureHandler = void Function(String? reason);
 
 /// Manages the session configuration, parameters and events of an [ARView]
 class ARSessionManager {
@@ -36,6 +37,10 @@ class ARSessionManager {
 
   /// Callback that is triggered once error is triggered
   ErrorHandler? onError;
+
+  /// ARCore TrackingFailureReason name (e.g. INSUFFICIENT_LIGHT), or null/NONE
+  /// when tracking recovers. Added in this vendored copy (MyFuturePet).
+  TrackingFailureHandler? onTrackingFailure;
 
   ARSessionManager(int id, this.buildContext, this.planeDetectionConfig,
       {this.debug = false}) {
@@ -166,6 +171,9 @@ class ARSessionManager {
             final planeCountResult = call.arguments as int;
             onPlaneDetected(planeCountResult);
           }
+          break;
+        case 'onTrackingFailure':
+          onTrackingFailure?.call(call.arguments as String?);
           break;
         case 'dispose':
           _channel.invokeMethod<void>("dispose");

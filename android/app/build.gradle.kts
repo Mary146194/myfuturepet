@@ -26,7 +26,24 @@ android {
         versionName = flutter.versionName
     }
 
+    // One fixed key (from CI secrets) so a new APK installs over the old one.
+    // Without MFP_KEYSTORE_PATH, builds fall back to the per-machine debug key.
+    val sharedKeystore = System.getenv("MFP_KEYSTORE_PATH")
+    signingConfigs {
+        if (sharedKeystore != null) {
+            create("shared") {
+                storeFile = file(sharedKeystore)
+                storePassword = System.getenv("MFP_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("MFP_KEY_ALIAS")
+                keyPassword = System.getenv("MFP_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (sharedKeystore != null) signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.

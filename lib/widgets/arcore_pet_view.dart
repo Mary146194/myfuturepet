@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:ar_flutter_plugin_2/ar_flutter_plugin.dart';
 import 'package:ar_flutter_plugin_2/datatypes/config_planedetection.dart';
 import 'package:ar_flutter_plugin_2/datatypes/hittest_result_types.dart';
@@ -11,6 +14,8 @@ import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
+
+import '../ar_floor_geometry.dart';
 
 /// Real ARCore floor AR inside the app (approach from Mary's branch): ARCore
 /// finds horizontal planes, a tap on a detected plane anchors the pet there,
@@ -44,13 +49,37 @@ class ArCorePetViewState extends State<ArCorePetView> {
   ARNode? _petNode;
   ARPlaneAnchor? _petAnchor;
   bool _placing = false;
-  bool _floorFound = false;
+  DateTime? _floorFoundAt;
+  String? _trackingFailure;
+  Timer? _distanceTimer;
+
+  // What the banner shows when tracking is fine.
+  String _status = 'Move the phone slowly over the floor to find it';
+  bool _ready = false;
 
   @override
   void dispose() {
+    _distanceTimer?.cancel();
     _session?.dispose();
     super.dispose();
   }
+
+  void _setStatus(String status, bool ready) {
+    _status = status;
+    _ready = ready;
+    _publishStatus();
+  }
+
+  /// A tracking problem (too dark, too fast) outranks the normal status.
+  void _publishStatus() {
+    if (!mounted) return;
+    final hint = trackingHint(_trackingFailure);
+    widget.onStatus(hint ?? _status, hint == null && _ready);
+  }
+
+  String get _placePrompt => _floorFoundAt != null
+      ? 'Floor found • tap it to place ${widget.petName}'
+      : 'Move the phone slowly over the floor to find it';
 
   void _onCreated(
     ARSessionManager session,
@@ -63,14 +92,14 @@ class ArCorePetViewState extends State<ArCorePetView> {
     _anchors = anchors;
 
     session.onPlaneDetected = (count) {
-      if (!mounted || _floorFound || count <= 0) return;
-      _floorFound = true;
-      if (_petNode == null) {
-        widget.onStatus(
-          'Floor found • tap it to place ${widget.petName}',
-          true,
-        );
-      }
+      if (!mounted || _floorFoundAt != null || count <= 0) return;
+      _floorFoundAt = DateTime.now();
+      if (_petNode == null) _setStatus(_placePrompt, true);
+    };
+    session.onTrackingFailure = (reason) {
+      if (reason == _trackingFailure) return;
+      _trackingFailure = reason;
+      _publishStatus();
     };
     session.onPlaneOrPointTap = _onTap;
     session.onError = (error) => debugPrint('ARCore error: $error');
@@ -84,7 +113,7 @@ class ArCorePetViewState extends State<ArCorePetView> {
       // Rotation off so dragging never turns the pet.
       handleRotation: false,
     );
-    widget.onStatus('Move the phone slowly over the floor to find it', false);
+    _setStatus(_placePrompt, false);
   }
 
   Future<void> _onTap(List<ARHitTestResult> hits) async {
@@ -96,7 +125,20 @@ class ArCorePetViewState extends State<ArCorePetView> {
       return;
     }
     if (_placing) return;
-    await _placeAt(planeHits.first);
+    final hit = planeHits.first;
+    final floorAt = _floorFoundAt;
+    final blocked = placementBlockReason(
+      distanceM: hit.distance,
+      trackingFailure: _trackingFailure,
+      floorAgeMs: floorAt == null
+          ? 0
+          : DateTime.now().difference(floorAt).inMilliseconds,
+    );
+    if (blocked != null) {
+      _snack(blocked);
+      return;
+    }
+    await _placeAt(hit);
   }
 
   /// Anchors the pet on the tapped floor point; tapping again moves it there.
@@ -135,16 +177,16 @@ class ArCorePetViewState extends State<ArCorePetView> {
         return;
       }
       node.transformNotifier.value = Matrix4.identity();
+      await objects.faceCamera(node);
 
       // Remove the previous pet only after the new one is in place.
       await _removeCurrent();
       _petNode = node;
       _petAnchor = anchor;
+      _session?.showPlanes(false); // clean view; shadows stay on the floor
       widget.onPlacedChanged(true);
-      widget.onStatus(
-        '${widget.petName} is on your floor at real size • drag to move',
-        true,
-      );
+      _setStatus('${widget.petName} is on your floor • drag to move', true);
+      _startDistanceReadout();
     } catch (e) {
       debugPrint('ARCore placement error: $e');
       _snack('Could not place ${widget.petName}. Try again.');
@@ -153,11 +195,31 @@ class ArCorePetViewState extends State<ArCorePetView> {
     }
   }
 
+  /// Shows how far away the pet stands, so a real-size pet at 3 m is not
+  /// mistaken for a small one.
+  void _startDistanceReadout() {
+    _distanceTimer?.cancel();
+    _distanceTimer = Timer.periodic(const Duration(milliseconds: 500), (
+      _,
+    ) async {
+      final anchor = _petAnchor;
+      final session = _session;
+      if (anchor == null || session == null) return;
+      final d = await session.getDistanceFromAnchor(anchor);
+      if (!mounted || d == null || _petAnchor != anchor) return;
+      _setStatus(
+        '${widget.petName} · ${d.toStringAsFixed(1)} m away · drag to move',
+        true,
+      );
+    });
+  }
+
   Future<void> _removeCurrent() async {
     final node = _petNode;
     final anchor = _petAnchor;
     _petNode = null;
     _petAnchor = null;
+    _distanceTimer?.cancel();
     if (node != null) _objects?.removeNode(node);
     if (anchor != null) _anchors?.removeAnchor(anchor);
   }
@@ -165,13 +227,20 @@ class ArCorePetViewState extends State<ArCorePetView> {
   /// Takes the pet off the floor so the user can place it again.
   Future<void> removePet() async {
     await _removeCurrent();
+    _session?.showPlanes(true);
     widget.onPlacedChanged(false);
-    widget.onStatus(
-      _floorFound
-          ? 'Floor found • tap it to place ${widget.petName}'
-          : 'Move the phone slowly over the floor to find it',
-      _floorFound,
-    );
+    _setStatus(_placePrompt, _floorFoundAt != null);
+  }
+
+  /// PNG of the AR scene (camera image plus the pet), or null on failure.
+  Future<Uint8List?> snapshot() async {
+    try {
+      final image = await _session?.snapshot();
+      return image is MemoryImage ? image.bytes : null;
+    } catch (e) {
+      debugPrint('ARCore snapshot failed: $e');
+      return null;
+    }
   }
 
   void _snack(String message) {

@@ -12,10 +12,10 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "myfuturepet/ar_support")
             .setMethodCallHandler { call, result ->
-                if (call.method == "check") {
-                    checkArCore(result, attemptsLeft = 25)
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "check" -> checkArCore(result, attemptsLeft = 25)
+                    "install" -> requestArCoreInstall(result)
+                    else -> result.notImplemented()
                 }
             }
     }
@@ -40,10 +40,23 @@ class MainActivity : FlutterActivity() {
                 Handler(Looper.getMainLooper()).postDelayed(
                     { checkArCore(result, attemptsLeft - 1) }, 200
                 )
+            availability == ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED ||
+                availability == ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD ->
+                result.success("needs_install")
             availability.isSupported -> result.success("supported")
             availability == ArCoreApk.Availability.UNSUPPORTED_DEVICE_NOT_CAPABLE ->
                 result.success("unsupported")
             else -> result.success("unknown")
+        }
+    }
+
+    // Shows Google's install/update screen for Play Services for AR.
+    private fun requestArCoreInstall(result: MethodChannel.Result) {
+        try {
+            val status = ArCoreApk.getInstance().requestInstall(this, true)
+            result.success(status.name)
+        } catch (e: Exception) {
+            result.success("failed")
         }
     }
 }

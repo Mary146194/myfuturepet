@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:ar_flutter_plugin_2/utils/json_converters.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -138,6 +139,16 @@ class ARObjectManager {
       }
     } on PlatformException catch (e) {
       return false;
+    }
+  }
+
+  /// Turns the node about the vertical so its front (+Z) faces the camera.
+  /// Added in this vendored copy (MyFuturePet).
+  Future<void> faceCamera(ARNode node) async {
+    try {
+      await _channel.invokeMethod<void>('faceCamera', {'name': node.name});
+    } on PlatformException catch (e) {
+      debugPrint('faceCamera failed: $e');
     }
   }
 
