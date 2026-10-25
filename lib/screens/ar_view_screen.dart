@@ -401,26 +401,45 @@ class _ARViewScreenState extends State<ARViewScreen>
     _loadArSupport();
   }
 
-  Future<void> _loadArSupport() async {
+  Future<void> _loadArSupport({int attempt = 0}) async {
     final checker = widget.arSupportChecker ?? ArSupportService().check;
+    ArSupport support;
     try {
-      final support = await checker();
-      if (!mounted) return;
-      if (support == ArSupport.supported && _cameraSupported) {
-        // ARCore needs the camera to itself: stop the plain preview first.
-        await _releaseCameraForArCore();
-        if (!mounted) return;
-        _isPetPlaced = false;
-      }
-      setState(() => _arSupport = support);
+      support = await checker();
     } catch (_) {
-      if (mounted) setState(() => _arSupport = ArSupport.unknown);
+      support = ArSupport.unknown;
+    }
+    if (!mounted) return;
+    if (support == ArSupport.supported && _cameraSupported) {
+      // ARCore needs the camera to itself: stop the plain preview first. A
+      // failure here must not demote a supported phone to the preview.
+      try {
+        await _releaseCameraForArCore();
+      } catch (e) {
+        debugPrint('Releasing the camera for ARCore failed: $e');
+      }
+      if (!mounted) return;
+      _isPetPlaced = false;
+    }
+    setState(() => _arSupport = support);
+    // Google's check can be slow or fail once (first launch, weak signal):
+    // keep asking for ~20 s instead of settling on the preview.
+    if (support == ArSupport.unknown &&
+        widget.arSupportChecker == null &&
+        attempt < 10) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && _arSupport == ArSupport.unknown) {
+          _loadArSupport(attempt: attempt + 1);
+        }
+      });
     }
   }
 
   Future<void> _releaseCameraForArCore() async {
     _accelerometerSubscription?.cancel();
     _gyroscopeSubscription?.cancel();
+    _accelerometerSubscription = null;
+    _gyroscopeSubscription = null;
     try {
       await _initializeCameraFuture;
     } catch (_) {}
@@ -479,13 +498,16 @@ class _ARViewScreenState extends State<ARViewScreen>
         controller?.dispose();
       }
     } else if (state == AppLifecycleState.resumed &&
-        _arSupport == ArSupport.needsInstall) {
-      _loadArSupport(); // back from Google's AR install screen
+        (_arSupport == ArSupport.needsInstall ||
+            _arSupport == ArSupport.unknown)) {
+      _loadArSupport(); // back from Google's AR install screen, or retry
     }
     if (state == AppLifecycleState.resumed &&
         _cameraSupported &&
         !_is3DStudioMode &&
         !_useArCore) {
+      // The preview needs its sensors again if ARCore had taken over.
+      if (_accelerometerSubscription == null) _initSensors();
       _initializeCamera();
     }
   }
@@ -694,6 +716,8 @@ class _ARViewScreenState extends State<ARViewScreen>
       _arCoreKey.currentState?.removePet();
       return;
     }
+    // Reset also re-asks Google, in case real floor AR is now available.
+    if (_arSupport == ArSupport.unknown) _loadArSupport();
     setState(() {
       _viewerReset++;
       _anchorYawRad = _yawRad; // straight ahead of where the phone points now
@@ -1543,8 +1567,12 @@ class _ARViewScreenState extends State<ARViewScreen>
       case ArSupport.unsupported:
         return 'Preview only: no ARCore on this phone • size approximate';
       case ArSupport.checking:
+        return 'Checking Google AR support… • preview for now';
       case ArSupport.unknown:
-        return _surfaceStatus;
+        final reason = ArSupportService.lastUnknownReason;
+        return reason == null
+            ? _surfaceStatus
+            : 'Google AR check: $reason • retrying, preview for now';
     }
   }
 

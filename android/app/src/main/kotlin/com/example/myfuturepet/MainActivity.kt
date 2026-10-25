@@ -31,7 +31,7 @@ class MainActivity : FlutterActivity() {
         val availability = try {
             ArCoreApk.getInstance().checkAvailability(this)
         } catch (e: Exception) {
-            result.success("unknown")
+            result.success("unknown:${e.javaClass.simpleName}")
             return
         }
         when {
@@ -46,7 +46,8 @@ class MainActivity : FlutterActivity() {
             availability.isSupported -> result.success("supported")
             availability == ArCoreApk.Availability.UNSUPPORTED_DEVICE_NOT_CAPABLE ->
                 result.success("unsupported")
-            else -> result.success("unknown")
+            // The reason is shown on screen so a failed check can be diagnosed.
+            else -> result.success("unknown:${availability.name}")
         }
     }
 
