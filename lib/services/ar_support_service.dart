@@ -4,9 +4,10 @@ import 'package:flutter/services.dart';
 /// Whether this phone is certified for ARCore floor AR.
 enum ArSupport { checking, supported, unsupported, unknown }
 
-/// Asks Android (via `MainActivity`) whether the device declares the ARCore
-/// system feature `android.hardware.camera.ar`. Anything other than Android
-/// reports [ArSupport.unknown] so the app does not claim or deny support.
+/// Asks Android (via `MainActivity`) whether Google lists the phone as ARCore
+/// capable (`ArCoreApk.checkAvailability`). Anything other than Android, or a
+/// check that cannot finish, reports [ArSupport.unknown] so the app does not
+/// claim or deny support.
 class ArSupportService {
   static const MethodChannel _channel = MethodChannel('myfuturepet/ar_support');
 

@@ -161,4 +161,31 @@ void main() {
       closeTo(0, 1e-6),
     );
   });
+
+  test('gravity fusion: gyro tilt moves pitch, hand jolts barely do', () {
+    // Upright phone tipping its camera down (negative rotation about device x)
+    // by 0.5 rad over 50 steps; the accelerometer still says "upright"
+    // (lagging), so the gyro must lead.
+    var g = [0.0, 9.81, 0.0];
+    for (var i = 0; i < 50; i++) {
+      g = fuseGravity(g, gx: -1, gy: 0, gz: 0, ax: 0, ay: 9.81, az: 0, dt: 0.01);
+    }
+    expect(pitchDownFromGravity(g[0], g[1], g[2]), greaterThan(0.3));
+
+    // Held still, a 2 g hand jolt along z is ignored entirely.
+    final still = [0.0, 9.81, 0.0];
+    final jolted = fuseGravity(still,
+        gx: 0, gy: 0, gz: 0, ax: 0, ay: 9.81, az: 19.6, dt: 0.01);
+    expect(pitchDownFromGravity(jolted[0], jolted[1], jolted[2]),
+        closeTo(0, 1e-9));
+
+    // Held still, a wrong estimate converges back to the accelerometer.
+    var drifted = [0.0, 6.9, 6.9];
+    for (var i = 0; i < 400; i++) {
+      drifted = fuseGravity(drifted,
+          gx: 0, gy: 0, gz: 0, ax: 0, ay: 9.81, az: 0, dt: 0.01);
+    }
+    expect(pitchDownFromGravity(drifted[0], drifted[1], drifted[2]),
+        closeTo(0, 0.01));
+  });
 }

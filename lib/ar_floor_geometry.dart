@@ -103,6 +103,32 @@ class FloorGeometry {
 double pitchDownFromGravity(double ax, double ay, double az) =>
     math.atan2(az, math.sqrt(ax * ax + ay * ay));
 
+/// Gravity vector (device axes, as the accelerometer reads it at rest) carried
+/// forward by the gyroscope over [dt] seconds, then nudged toward the
+/// accelerometer reading by [blend]. The gyro is smooth but drifts; the
+/// accelerometer never drifts but feels every hand movement, so it only
+/// corrects slowly and is ignored while the phone is being accelerated.
+List<double> fuseGravity(
+  List<double> g, {
+  required double gx,
+  required double gy,
+  required double gz,
+  required double ax,
+  required double ay,
+  required double az,
+  required double dt,
+  double blend = 0.02,
+}) {
+  // A world-fixed vector seen from a phone turning at w turns the other way:
+  // dg/dt = -(w x g).
+  final x = g[0] - (gy * g[2] - gz * g[1]) * dt;
+  final y = g[1] - (gz * g[0] - gx * g[2]) * dt;
+  final z = g[2] - (gx * g[1] - gy * g[0]) * dt;
+  final accelNorm = math.sqrt(ax * ax + ay * ay + az * az);
+  final k = (accelNorm - 9.81).abs() < 1.5 ? blend : 0.0;
+  return [x + k * (ax - x), y + k * (ay - y), z + k * (az - z)];
+}
+
 /// Rate of turning about the vertical (left = positive) from a gyroscope reading
 /// and the accelerometer gravity vector, both in device axes.
 double yawRateFromGyro({

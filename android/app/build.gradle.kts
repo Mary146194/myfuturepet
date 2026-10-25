@@ -43,3 +43,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Only for ArCoreApk.checkAvailability (MainActivity); no AR session yet.
+    implementation("com.google.ar:core:1.45.0")
+}

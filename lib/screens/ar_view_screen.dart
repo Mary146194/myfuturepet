@@ -105,6 +105,9 @@ class _ARViewScreenState extends State<ARViewScreen>
   double _yawRad = 0;
   double _anchorYawRad = 0;
   List<double>? _gravity;
+  List<double>? _accel;
+  bool _hasGyro = false;
+  static const double _gyroDeadZoneRadPerSec = 0.02; // ~1 degree a second
   DateTime? _lastGyroTime;
   DateTime _lastSensorUiUpdate = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -470,11 +473,18 @@ class _ARViewScreenState extends State<ARViewScreen>
   void _initSensors() {
     if (kIsWeb) return;
 
+    // The default 200 ms sampling made the pet jump 5 times a second.
+    const period = SensorInterval.gameInterval;
     try {
-      _accelerometerSubscription = accelerometerEventStream().listen((event) {
-        // Low-pass the accelerometer so hand shake does not move the pet.
+      _accelerometerSubscription = accelerometerEventStream(
+        samplingPeriod: period,
+      ).listen((event) {
+        _accel = [event.x, event.y, event.z];
+        // With a gyro, gravity is fused in the gyro listener. Without one
+        // (some budget phones), fall back to a heavy low-pass here.
+        if (_gravity != null && _hasGyro) return;
         final g = _gravity;
-        const a = 0.15;
+        const a = 0.1;
         final gx = g == null ? event.x : g[0] + a * (event.x - g[0]);
         final gy = g == null ? event.y : g[1] + a * (event.y - g[1]);
         final gz = g == null ? event.z : g[2] + a * (event.z - g[2]);
@@ -483,23 +493,40 @@ class _ARViewScreenState extends State<ARViewScreen>
         _refreshFromSensors();
       }, onError: (_) {});
 
-      _gyroscopeSubscription = gyroscopeEventStream().listen((event) {
+      _gyroscopeSubscription = gyroscopeEventStream(
+        samplingPeriod: period,
+      ).listen((event) {
+        _hasGyro = true;
         final g = _gravity;
+        final a = _accel;
         final last = _lastGyroTime;
         _lastGyroTime = event.timestamp;
-        if (g == null || last == null) return;
+        if (g == null || a == null || last == null) return;
         final dt = event.timestamp.difference(last).inMicroseconds / 1e6;
         if (dt <= 0 || dt > 0.5) return;
-        _yawRad +=
-            yawRateFromGyro(
-              gx: event.x,
-              gy: event.y,
-              gz: event.z,
-              ax: g[0],
-              ay: g[1],
-              az: g[2],
-            ) *
-            dt;
+        final fused = fuseGravity(
+          g,
+          gx: event.x,
+          gy: event.y,
+          gz: event.z,
+          ax: a[0],
+          ay: a[1],
+          az: a[2],
+          dt: dt,
+        );
+        _gravity = fused;
+        _pitchDownRad = pitchDownFromGravity(fused[0], fused[1], fused[2]);
+        final yawRate = yawRateFromGyro(
+          gx: event.x,
+          gy: event.y,
+          gz: event.z,
+          ax: fused[0],
+          ay: fused[1],
+          az: fused[2],
+        );
+        // Ignore tiny rates: that is gyro bias, and integrating it slides the
+        // pet sideways while the phone is held still.
+        if (yawRate.abs() > _gyroDeadZoneRadPerSec) _yawRad += yawRate * dt;
         _refreshFromSensors();
       }, onError: (_) {});
     } catch (e) {
@@ -507,11 +534,11 @@ class _ARViewScreenState extends State<ARViewScreen>
     }
   }
 
-  /// Repaints at most ~30 times a second; sensors fire far more often.
+  /// Repaints at most ~60 times a second; sensors can fire more often.
   void _refreshFromSensors() {
     if (!mounted) return;
     final now = DateTime.now();
-    if (now.difference(_lastSensorUiUpdate).inMilliseconds < 33) return;
+    if (now.difference(_lastSensorUiUpdate).inMilliseconds < 16) return;
     _lastSensorUiUpdate = now;
     final aimed =
         _pitchDownRad >= _geo.minFloorAngleRad && _pitchDownRad <= 1.45;
