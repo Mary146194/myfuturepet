@@ -13,6 +13,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # The ARCore/SceneView native libraries fill the runner's disk while
+      # packaging; drop preinstalled toolchains this build never uses.
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules /opt/hostedtoolcache/CodeQL /usr/share/swift && df -h /
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -51,7 +56,7 @@ jobs:
           name: My Future Pet ${{ github.ref_name }}
           body: |
             Debug APK for My Future Pet (BSIT Capstone, Jagna Animal Lover and Rescue Group)
-            - Real floor AR through Google ARCore (Scene Viewer) on supported Android phones
+            - Real floor AR inside the app on ARCore phones: finds the floor, anchors the pet where you tap, real size
             - Sensor-based floor preview with approximate size on phones without ARCore
             - Life-size 3D pet models; static (no animation) models hide the Sit and Wag Tail buttons
           draft: false
