@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 /// Whether this phone is certified for ARCore floor AR.
 ///
 /// [needsInstall]: the phone can do ARCore but Google Play Services for AR is
-/// missing or too old.
+/// missing or too old. The ARCore view still opens and its session asks Google
+/// to install or update (v1.0.9 kept these phones in the preview instead).
 enum ArSupport { checking, supported, needsInstall, unsupported, unknown }
 
 /// Asks Android (via `MainActivity`) whether Google lists the phone as ARCore
@@ -36,24 +37,18 @@ class ArSupportService {
         case 'unsupported':
           return ArSupport.unsupported;
       }
+      lastUnknownReason ??= result ?? 'empty answer';
     } on PlatformException catch (e) {
       debugPrint('ARCore support check failed: $e');
       lastUnknownReason = e.code;
     } on MissingPluginException {
       // Older native build without the channel.
+      lastUnknownReason = 'channel missing';
     }
     return ArSupport.unknown;
   }
-
-  /// Opens Google's install/update flow for Play Services for AR. The result
-  /// arrives when the user comes back to the app, so callers re-run [check].
-  Future<void> requestInstall() async {
-    try {
-      await _channel.invokeMethod<String>('install');
-    } on PlatformException catch (e) {
-      debugPrint('ARCore install request failed: $e');
-    } on MissingPluginException {
-      // Older native build without the method.
-    }
-  }
 }
+
+/// Whether the real ARCore view should open for this check result.
+bool opensArCore(ArSupport support) =>
+    support == ArSupport.supported || support == ArSupport.needsInstall;

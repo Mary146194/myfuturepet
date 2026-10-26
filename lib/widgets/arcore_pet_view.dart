@@ -28,6 +28,7 @@ class ArCorePetView extends StatefulWidget {
     required this.petName,
     required this.onStatus,
     required this.onPlacedChanged,
+    this.onFailed,
   });
 
   /// Life-size GLB (metres, feet at y = 0), as prepared by `scripts/`.
@@ -37,6 +38,10 @@ class ArCorePetView extends StatefulWidget {
   /// Banner text, and whether the view is ready for the user's next step.
   final void Function(String status, bool ready) onStatus;
   final ValueChanged<bool> onPlacedChanged;
+
+  /// ARCore reported an error before a pet was placed (e.g. it was forced on
+  /// a phone that cannot run it).
+  final ValueChanged<String>? onFailed;
 
   @override
   State<ArCorePetView> createState() => ArCorePetViewState();
@@ -102,7 +107,10 @@ class ArCorePetViewState extends State<ArCorePetView> {
       _publishStatus();
     };
     session.onPlaneOrPointTap = _onTap;
-    session.onError = (error) => debugPrint('ARCore error: $error');
+    session.onError = (error) {
+      debugPrint('ARCore error: $error');
+      if (_petNode == null) widget.onFailed?.call(error);
+    };
 
     session.onInitialize(
       showFeaturePoints: false,

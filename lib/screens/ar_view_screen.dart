@@ -105,12 +105,13 @@ class _ARViewScreenState extends State<ARViewScreen>
   final GlobalKey<ArCorePetViewState> _arCoreKey = GlobalKey();
   String _arCoreStatus = 'Starting ARCore…';
   bool _arCoreReady = false;
+  // "Try real AR" forces the ARCore view when Google's check is inconclusive.
+  bool _forceArCore = false;
   bool get _useArCore =>
-      _arSupport == ArSupport.supported &&
+      (opensArCore(_arSupport) || _forceArCore) &&
       _cameraSupported &&
       _modelGlbUrl != null;
   bool _surfaceDetected = false; // true while the phone is aimed at the floor
-  String _surfaceStatus = 'Aim at the floor, then tap to place your pet';
   double _pitchDownRad = 0.35; // used until sensors report (20 degrees down)
   double _yawRad = 0;
   double _anchorYawRad = 0;
@@ -406,11 +407,12 @@ class _ARViewScreenState extends State<ARViewScreen>
     ArSupport support;
     try {
       support = await checker();
-    } catch (_) {
+    } catch (e) {
+      ArSupportService.lastUnknownReason = '${e.runtimeType}';
       support = ArSupport.unknown;
     }
     if (!mounted) return;
-    if (support == ArSupport.supported && _cameraSupported) {
+    if (opensArCore(support) && _cameraSupported) {
       // ARCore needs the camera to itself: stop the plain preview first. A
       // failure here must not demote a supported phone to the preview.
       try {
@@ -498,9 +500,8 @@ class _ARViewScreenState extends State<ARViewScreen>
         controller?.dispose();
       }
     } else if (state == AppLifecycleState.resumed &&
-        (_arSupport == ArSupport.needsInstall ||
-            _arSupport == ArSupport.unknown)) {
-      _loadArSupport(); // back from Google's AR install screen, or retry
+        _arSupport == ArSupport.unknown) {
+      _loadArSupport(); // retry an inconclusive check
     }
     if (state == AppLifecycleState.resumed &&
         _cameraSupported &&
@@ -590,12 +591,7 @@ class _ARViewScreenState extends State<ARViewScreen>
     _lastSensorUiUpdate = now;
     final aimed =
         _pitchDownRad >= _geo.minFloorAngleRad && _pitchDownRad <= 1.45;
-    setState(() {
-      _surfaceDetected = aimed;
-      _surfaceStatus = aimed
-          ? 'Tap the floor where $_petName should stand'
-          : 'Aim the camera at the floor, below the horizon';
-    });
+    setState(() => _surfaceDetected = aimed);
   }
 
   /// Puts the pet on the floor point under [localPosition] (screen pixels).
@@ -752,11 +748,6 @@ class _ARViewScreenState extends State<ARViewScreen>
     if (_useArCore) {
       // Already in real floor AR: the shutter lifts the pet to place again.
       await _arCoreKey.currentState?.removePet();
-      return;
-    }
-    if (_arSupport == ArSupport.needsInstall) {
-      // Google's install screen opens; the check re-runs when the app resumes.
-      await ArSupportService().requestInstall();
       return;
     }
     if (!_cameraSupported && widget.arSessionLauncher == null) {
@@ -961,6 +952,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                         }),
                         onPlacedChanged: (placed) =>
                             setState(() => _isPetPlaced = placed),
+                        onFailed: _onArCoreFailed,
                       ),
                     ),
                   if (!_is3DStudioMode && !_useArCore)
@@ -1559,21 +1551,50 @@ class _ARViewScreenState extends State<ARViewScreen>
   String get _cameraStatusText {
     switch (_arSupport) {
       case ArSupport.supported:
+      case ArSupport.needsInstall:
         return _surfaceDetected
             ? 'Shutter = real floor AR • tap the floor to preview'
             : 'Aim at the floor • shutter = real floor AR';
-      case ArSupport.needsInstall:
-        return 'Tap the shutter to install Google AR services for real floor AR';
       case ArSupport.unsupported:
         return 'Preview only: no ARCore on this phone • size approximate';
       case ArSupport.checking:
         return 'Checking Google AR support… • preview for now';
       case ArSupport.unknown:
-        final reason = ArSupportService.lastUnknownReason;
-        return reason == null
-            ? _surfaceStatus
-            : 'Google AR check: $reason • retrying, preview for now';
+        final reason = ArSupportService.lastUnknownReason ?? 'no answer';
+        return 'Google AR check: $reason • preview for now';
     }
+  }
+
+  /// Google's check gave no clear answer: let the user open ARCore anyway.
+  bool get _canTryRealAr =>
+      !_is3DStudioMode &&
+      !_useArCore &&
+      _cameraSupported &&
+      _modelGlbUrl != null &&
+      (_arSupport == ArSupport.unknown || _arSupport == ArSupport.checking);
+
+  Future<void> _tryRealAr() async {
+    try {
+      await _releaseCameraForArCore();
+    } catch (e) {
+      debugPrint('Releasing the camera for ARCore failed: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _forceArCore = true;
+      _isPetPlaced = false;
+    });
+  }
+
+  /// ARCore could not start after "Try real AR": back to the sensor preview.
+  void _onArCoreFailed(String error) {
+    if (!mounted || !_forceArCore) return;
+    setState(() => _forceArCore = false);
+    if (_accelerometerSubscription == null) _initSensors();
+    _initializeCamera();
+    _showMessage(
+      'Real AR could not start on this phone ($error). Using the floor preview.',
+    );
   }
 
   Widget _buildSurfaceStatusBanner() {
@@ -1636,6 +1657,17 @@ class _ARViewScreenState extends State<ARViewScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (_canTryRealAr)
+            TextButton(
+              key: const ValueKey('try-real-ar'),
+              onPressed: _tryRealAr,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF00E5D0),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 28),
+              ),
+              child: const Text('Try real AR'),
+            ),
         ],
       ),
     );

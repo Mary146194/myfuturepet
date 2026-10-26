@@ -14,7 +14,6 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "check" -> checkArCore(result, attemptsLeft = 25)
-                    "install" -> requestArCoreInstall(result)
                     else -> result.notImplemented()
                 }
             }
@@ -48,16 +47,6 @@ class MainActivity : FlutterActivity() {
                 result.success("unsupported")
             // The reason is shown on screen so a failed check can be diagnosed.
             else -> result.success("unknown:${availability.name}")
-        }
-    }
-
-    // Shows Google's install/update screen for Play Services for AR.
-    private fun requestArCoreInstall(result: MethodChannel.Result) {
-        try {
-            val status = ArCoreApk.getInstance().requestInstall(this, true)
-            result.success(status.name)
-        } catch (e: Exception) {
-            result.success("failed")
         }
     }
 }
