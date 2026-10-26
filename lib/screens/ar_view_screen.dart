@@ -8,6 +8,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import '../ar_floor_geometry.dart';
 import '../ar_model_url.dart';
+import '../page_js.dart';
 import '../services/ar_support_service.dart';
 import '../services/pet_service.dart';
 import '../widgets/arcore_pet_view.dart';
@@ -848,6 +849,14 @@ class _ARViewScreenState extends State<ARViewScreen>
     if (widget.modelBuilder != null) {
       return widget.modelBuilder!(context, url, studio);
     }
+    // On web the viewer never calls onWebViewCreated: probe the page instead,
+    // once per model.
+    if (kIsWeb && _webProbedUrl != url) {
+      _webProbedUrl = url;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _probeAnimations(evalPageJs),
+      );
+    }
     return ModelViewer(
       key: ValueKey(
         '${url}_${studio ? 'studio' : 'camera'}_$_currentAction'
@@ -1599,7 +1608,9 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   Widget _buildSurfaceStatusBanner() {
     final statusText = _is3DStudioMode
-        ? '3D Interactive Studio • 360° Inspection & Rigged Animations'
+        ? (_hasAnimations
+              ? '3D Studio • drag to turn 360° • try Sit or Wag Tail'
+              : '3D Studio • drag to turn 360° • pinch to zoom')
         : _useArCore
         ? _arCoreStatus
         : !_cameraReady
@@ -1905,6 +1916,7 @@ class _ARViewScreenState extends State<ARViewScreen>
   /// Stays true until the viewer reports otherwise (and always in tests).
   bool _hasAnimations = true;
   int _animProbeGeneration = 0;
+  String? _webProbedUrl;
 
   Future<void> _probeAnimations(Future<Object> Function(String) run) async {
     final generation = ++_animProbeGeneration;
