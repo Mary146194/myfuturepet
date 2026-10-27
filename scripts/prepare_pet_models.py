@@ -4,7 +4,7 @@
 
 Every <petname>.glb in --src (name = the pet's name in the database, any case) is
 looked up in Supabase for its type and size, scaled to the standing height in
-glb_tools.EXPECTED_HEIGHT_M, grounded (feet at y=0, centred) and written to --dst.
+glb_tools.EXPECTED_HEIGHT_M, grounded (feet at y=0, centred), made non-metal and written to --dst.
 Meshy models are static, so the idle-pose ratio is 1. Prints each file's size and
 warns above 5 MB / fails above 8 MB. With --shrink, any input over 5 MB is first
 reduced to ~30k triangles and 1024 px textures (needs Node; see shrink_glb.py).
@@ -19,6 +19,13 @@ from check_glb_scale import get, load_env, MAX_MB, WARN_MB
 from glb_tools import expected_height, model_height, read_glb, write_glb
 from normalize_glb import ground, normalize
 from shrink_glb import shrink
+
+
+def matte(gltf):
+    """Make every material non-metal. Meshy leaves metallicFactor unset (glTF default 1),
+    so a pet renders as dark chrome wherever AR's estimated room light is dim."""
+    for mat in gltf.get("materials", []):
+        mat.setdefault("pbrMetallicRoughness", {})["metallicFactor"] = 0.0
 
 
 def main():
@@ -68,6 +75,7 @@ def main():
         assert abs(model_height(gltf) - height) < 1e-4
         gltf["asset"]["extras"]["poseRatio"] = 1.0
         ground(gltf)
+        matte(gltf)
         out = os.path.join(args.dst, stem + ".glb")
         write_glb(out, gltf, binary)
         mb = os.path.getsize(out) / 1e6

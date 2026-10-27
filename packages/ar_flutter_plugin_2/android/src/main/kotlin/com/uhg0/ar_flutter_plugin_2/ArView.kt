@@ -223,9 +223,14 @@ class ArView(
 
         return try {
             sceneView.modelLoader.loadModelInstance(fileLocation)?.let { modelInstance ->
+                // MyFuturePet: life-size models keep their own metres. Fitting
+                // them to 1 m made pets ~1.3x too big whenever the later scale
+                // reset from Flutter did not land. Only a model no pet could be
+                // (> 3 m, not yet normalized) still gets the old 1 m fit.
+                val sizeM = modelInstance.asset.boundingBox.halfExtent.max() * 2
                 object : ModelNode(
                     modelInstance = modelInstance,
-                    scaleToUnits = transformation.first().toFloat(),
+                    scaleToUnits = if (sizeM > 3f) 1f else null,
                 ) {
                     // Drag along detected floor planes. The default SceneView
                     // move hit-tests the parent node's collision shape, which an

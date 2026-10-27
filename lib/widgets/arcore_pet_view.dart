@@ -13,7 +13,6 @@ import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
 
 import '../ar_floor_geometry.dart';
 
@@ -173,9 +172,6 @@ class ArCorePetViewState extends State<ArCorePetView> {
         type: NodeType.webGLB,
         uri: widget.modelUrl,
         name: 'pet_$id',
-        // The plugin reads scale.x as "fit the model to this many metres";
-        // reset to scale 1 below so the life-size model keeps its own size.
-        scale: Vector3.all(1),
       );
       if (await objects.addNode(node, planeAnchor: anchor) != true) {
         anchors.removeAnchor(anchor);
@@ -184,7 +180,6 @@ class ArCorePetViewState extends State<ArCorePetView> {
         );
         return;
       }
-      node.transformNotifier.value = Matrix4.identity();
       await objects.faceCamera(node);
 
       // Remove the previous pet only after the new one is in place.
