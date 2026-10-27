@@ -152,6 +152,46 @@ class ARObjectManager {
     }
   }
 
+  /// Names of the animation clips in [node]'s model.
+  Future<List<String>> animationNames(ARNode node) async {
+    try {
+      final names = await _channel.invokeListMethod<String>(
+        'animationNames',
+        {'name': node.name},
+      );
+      return names ?? const [];
+    } on PlatformException catch (e) {
+      debugPrint('animationNames failed: $e');
+      return const [];
+    }
+  }
+
+  /// Plays one clip on [node] (stopping any other); [reverse] plays it backwards.
+  Future<void> playAnimation(
+    ARNode node,
+    String clip, {
+    bool loop = true,
+    bool reverse = false,
+  }) =>
+      _animate(node, {
+        'mode': 'play',
+        'clip': clip,
+        'loop': loop,
+        'reverse': reverse,
+      });
+
+  /// Stops [node]'s clips and returns it to the pose it was loaded in.
+  Future<void> restPose(ARNode node) => _animate(node, {'mode': 'rest'});
+
+  Future<void> _animate(ARNode node, Map<String, Object> args) async {
+    try {
+      await _channel
+          .invokeMethod<void>('animate', {'name': node.name, ...args});
+    } on PlatformException catch (e) {
+      debugPrint('animate failed: $e');
+    }
+  }
+
   /// Remove given node from the AR Scene
   removeNode(ARNode node) {
     _channel.invokeMethod<String>('removeNode', {'name': node.name});

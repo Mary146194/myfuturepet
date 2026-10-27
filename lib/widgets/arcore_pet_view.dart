@@ -15,6 +15,7 @@ import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:flutter/material.dart';
 
 import '../ar_floor_geometry.dart';
+import '../pet_clips.dart';
 
 /// Real ARCore floor AR inside the app (approach from Mary's branch): ARCore
 /// finds horizontal planes, a tap on a detected plane anchors the pet there,
@@ -28,6 +29,7 @@ class ArCorePetView extends StatefulWidget {
     required this.onStatus,
     required this.onPlacedChanged,
     this.onFailed,
+    this.onClips,
   });
 
   /// Life-size GLB (metres, feet at y = 0), as prepared by `scripts/`.
@@ -41,6 +43,9 @@ class ArCorePetView extends StatefulWidget {
   /// ARCore reported an error before a pet was placed (e.g. it was forced on
   /// a phone that cannot run it).
   final ValueChanged<String>? onFailed;
+
+  /// Animation clip names of the placed model, reported after each placement.
+  final ValueChanged<List<String>>? onClips;
 
   @override
   State<ArCorePetView> createState() => ArCorePetViewState();
@@ -190,6 +195,10 @@ class ArCorePetViewState extends State<ArCorePetView> {
       widget.onPlacedChanged(true);
       _setStatus('${widget.petName} is on your floor • drag to move', true);
       _startDistanceReadout();
+      final clips = await objects.animationNames(node);
+      widget.onClips?.call(clips);
+      final idle = petClipFor('Normal', clips);
+      if (idle != null) await objects.playAnimation(node, idle);
     } catch (e) {
       debugPrint('ARCore placement error: $e');
       _snack('Could not place ${widget.petName}. Try again.');
@@ -233,6 +242,24 @@ class ArCorePetViewState extends State<ArCorePetView> {
     _session?.showPlanes(true);
     widget.onPlacedChanged(false);
     _setStatus(_placePrompt, _floorFoundAt != null);
+  }
+
+  /// Plays [clip] on the placed pet (one clip at a time); no-op before placing.
+  Future<void> playClip(
+    String clip, {
+    bool loop = true,
+    bool reverse = false,
+  }) async {
+    final node = _petNode;
+    if (node != null) {
+      await _objects?.playAnimation(node, clip, loop: loop, reverse: reverse);
+    }
+  }
+
+  /// Stops any clip and stands the pet back in its loaded pose.
+  Future<void> restPose() async {
+    final node = _petNode;
+    if (node != null) await _objects?.restPose(node);
   }
 
   /// PNG of the AR scene (camera image plus the pet), or null on failure.

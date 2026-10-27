@@ -77,6 +77,8 @@ class ArView(
     private val objectChannel: MethodChannel = MethodChannel(messenger, "arobjects_$id")
     private val anchorChannel: MethodChannel = MethodChannel(messenger, "aranchors_$id")
     private val nodesMap = mutableMapOf<String, ModelNode>()
+    // MyFuturePet: each model's joint transforms at load, to return to standing.
+    private val restPoses = java.util.WeakHashMap<ModelNode, List<Pair<Node, Transform>>>()
     private var planeCount = 0
     private var selectedNode: Node? = null
     private val detectedPlanes = mutableSetOf<Plane>()
@@ -147,6 +149,8 @@ class ArView(
                     handleTransformNode(call, result)
                 }
                 "faceCamera" -> handleFaceCamera(call, result)
+                "animationNames" -> handleAnimationNames(call, result)
+                "animate" -> handleAnimate(call, result)
                 else -> result.notImplemented()
             }
         }
@@ -230,6 +234,8 @@ class ArView(
                 val sizeM = modelInstance.asset.boundingBox.halfExtent.max() * 2
                 object : ModelNode(
                     modelInstance = modelInstance,
+                    // MyFuturePet: pets stand still until Sit / Wag Tail is tapped.
+                    autoAnimate = false,
                     scaleToUnits = if (sizeM > 3f) 1f else null,
                 ) {
                     // Drag along detected floor planes. The default SceneView
@@ -323,6 +329,7 @@ class ArView(
                     name = nodeData["name"] as? String
                     // MyFuturePet: shadow on the detected floor grounds the pet.
                     isShadowCaster = true
+                    restPoses[this] = nodes.map { it to it.transform }
                 }
             } ?: run {
                 null
@@ -642,6 +649,37 @@ class ArView(
     // MyFuturePet: turn a node about the vertical so its +Z (the pet's front)
     // points at the camera. Done here because the generic transform path
     // mixes radians and degrees.
+    private fun handleAnimationNames(call: MethodCall, result: MethodChannel.Result) {
+        val node = call.argument<String>("name")?.let { nodesMap[it] }
+        if (node == null) {
+            result.error("NODE_NOT_FOUND", "Node not found", null)
+            return
+        }
+        result.success((0 until node.animationCount).map { node.animator.getAnimationName(it) })
+    }
+
+    /** mode "play": one clip at a time (loop / reverse); mode "rest": back to the pose at load. */
+    private fun handleAnimate(call: MethodCall, result: MethodChannel.Result) {
+        val node = call.argument<String>("name")?.let { nodesMap[it] }
+        if (node == null) {
+            result.error("NODE_NOT_FOUND", "Node not found", null)
+            return
+        }
+        node.playingAnimations.clear()
+        when (call.argument<String>("mode")) {
+            "rest" -> restPoses[node]?.forEach { (child, transform) -> child.transform = transform }
+            else -> {
+                val clip = call.argument<String>("clip")
+                val reverse = call.argument<Boolean>("reverse") == true
+                if (clip != null) {
+                    node.playAnimation(clip, speed = if (reverse) -1f else 1f,
+                        loop = call.argument<Boolean>("loop") == true)
+                }
+            }
+        }
+        result.success(null)
+    }
+
     private fun handleFaceCamera(
         call: MethodCall,
         result: MethodChannel.Result,

@@ -8,6 +8,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import '../ar_floor_geometry.dart';
 import '../ar_model_url.dart';
+import '../pet_clips.dart';
 import '../page_js.dart';
 import '../services/ar_support_service.dart';
 import '../services/pet_service.dart';
@@ -685,13 +686,21 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ACTIONS (SIT, WAG TAIL, SPEAK)
   // ============================================================
 
-  void _triggerAction(String action) {
+  void _triggerAction(String tapped) {
+    final previous = _currentAction;
+    // Tapping the active Sit / Wag Tail again stands the pet back up.
+    final action = tapped == previous && tapped != 'Speak' ? 'Normal' : tapped;
     setState(() {
       _currentAction = action;
       _showSpeechBubble = false;
     });
+    if (_useArCore && !_is3DStudioMode && action != 'Speak') {
+      _playArCoreClip(previous, action);
+    }
 
-    if (action == 'Wag Tail') {
+    if (action == 'Normal') {
+      _showMessage('$_petName is standing.');
+    } else if (action == 'Wag Tail') {
       _showMessage('$_petName is wagging tail.');
     } else if (action == 'Sit') {
       _showMessage('$_petName is in sit posture.');
@@ -705,6 +714,23 @@ class _ARViewScreenState extends State<ARViewScreen>
           setState(() => _showSpeechBubble = false);
         }
       });
+    }
+  }
+
+  /// Real AR: Sit plays once and holds, Wag Tail loops, Normal stands (getting
+  /// up from a sit plays the sit backwards).
+  void _playArCoreClip(String previous, String action) {
+    final view = _arCoreKey.currentState;
+    if (view == null) return;
+    final clips = _clipNames ?? const <String>[];
+    final clip = petClipFor(action, clips);
+    final sit = petClipFor('Sit', clips);
+    if (action == 'Normal' && previous == 'Sit' && sit != null) {
+      view.playClip(sit, loop: false, reverse: true);
+    } else if (clip != null) {
+      view.playClip(clip, loop: action != 'Sit');
+    } else {
+      view.restPose();
     }
   }
 
@@ -857,6 +883,16 @@ class _ARViewScreenState extends State<ARViewScreen>
         (_) => _probeAnimations(evalPageJs),
       );
     }
+    // Until the viewer reports its clips, keep the older models' names.
+    final names = _clipNames;
+    final viewerClip = names == null
+        ? (_currentAction == 'Sit' ? 'sit' : 'idle')
+        : petClipFor(_currentAction, names);
+    if (kIsWeb && _currentAction == 'Sit' && viewerClip != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _playOnceWhenLoaded(evalPageJs),
+      );
+    }
     return ModelViewer(
       key: ValueKey(
         '${url}_${studio ? 'studio' : 'camera'}_$_currentAction'
@@ -875,11 +911,15 @@ class _ARViewScreenState extends State<ARViewScreen>
           _runArJavaScript = controller.runJavaScriptReturningResult;
         }
         _probeAnimations(controller.runJavaScriptReturningResult);
+        if (_currentAction == 'Sit' && viewerClip != null) {
+          _playOnceWhenLoaded(controller.runJavaScriptReturningResult);
+        }
       },
       autoRotate: studio,
       cameraControls: true,
-      autoPlay: true,
-      animationName: _currentAction == 'Sit' ? 'sit' : 'idle',
+      // Sit plays once (started below) and holds; the others loop.
+      autoPlay: viewerClip != null && _currentAction != 'Sit',
+      animationName: viewerClip,
       backgroundColor: studio ? const Color(0xFF1E2833) : Colors.transparent,
       shadowIntensity: 0.85,
       shadowSoftness: 0.9,
@@ -959,9 +999,12 @@ class _ARViewScreenState extends State<ARViewScreen>
                           _arCoreStatus = status;
                           _arCoreReady = ready;
                         }),
-                        onPlacedChanged: (placed) =>
-                            setState(() => _isPetPlaced = placed),
+                        onPlacedChanged: (placed) => setState(() {
+                          _isPetPlaced = placed;
+                          _currentAction = 'Normal'; // a new pet stands
+                        }),
                         onFailed: _onArCoreFailed,
+                        onClips: (clips) => setState(() => _clipNames = clips),
                       ),
                     ),
                   if (!_is3DStudioMode && !_useArCore)
@@ -1911,10 +1954,11 @@ class _ARViewScreenState extends State<ARViewScreen>
   // BEHAVIOR ACTIONS (SIT, WAG TAIL, SPEAK)
   // ============================================================
 
-  /// Whether the loaded model has animations. Static models (e.g. Meshy exports)
-  /// report none, and then Sit / Wag Tail would do nothing, so they are hidden.
-  /// Stays true until the viewer reports otherwise (and always in tests).
-  bool _hasAnimations = true;
+  /// Clip names of the loaded model, from the 3D viewer or real AR; null until
+  /// one reports (and always in tests). Sit / Wag Tail show only when the model
+  /// has that clip, so a still model never offers a button that does nothing.
+  List<String>? _clipNames;
+  bool get _hasAnimations => _clipNames?.isNotEmpty ?? true;
   int _animProbeGeneration = 0;
   String? _webProbedUrl;
 
@@ -1926,12 +1970,15 @@ class _ARViewScreenState extends State<ARViewScreen>
       try {
         final result = await run(
           "(() => { const v = document.querySelector('model-viewer'); "
-          'return v && v.loaded ? v.availableAnimations.length : -1; })()',
+          "return v && v.loaded ? '#' + v.availableAnimations.join('|') : ''; })()",
         );
-        final count = int.tryParse(result.toString());
-        if (count != null && count >= 0) {
+        // Android returns the string JSON-quoted.
+        final text = result.toString().replaceAll('"', '');
+        if (text.startsWith('#')) {
+          final names = text.substring(1).split('|')
+            ..removeWhere((n) => n.isEmpty);
           if (mounted && generation == _animProbeGeneration) {
-            setState(() => _hasAnimations = count > 0);
+            setState(() => _clipNames = names);
           }
           return;
         }
@@ -1941,11 +1988,30 @@ class _ARViewScreenState extends State<ARViewScreen>
     }
   }
 
+  /// Starts the Sit clip once in the 3D viewer, so the pet stays seated.
+  Future<void> _playOnceWhenLoaded(Future<Object> Function(String) run) async {
+    for (var i = 0; i < 40; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!mounted || _currentAction != 'Sit') return;
+      try {
+        final result = await run(
+          "(() => { const v = document.querySelector('model-viewer'); "
+          'if (!v || !v.loaded) return 0; '
+          'v.play({repetitions: 1}); return 1; })()',
+        );
+        if (result.toString().contains('1')) return;
+      } catch (_) {
+        // The viewer is not ready yet; try again.
+      }
+    }
+  }
+
   Widget _buildActionRow() {
+    final clips = _clipNames;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (_hasAnimations) ...[
+        if (clips == null || petClipFor('Sit', clips) != null) ...[
           _actionButton(
             label: 'Sit',
             icon: Icons.airline_seat_recline_normal,
@@ -1953,6 +2019,8 @@ class _ARViewScreenState extends State<ARViewScreen>
             onTap: () => _triggerAction('Sit'),
           ),
           const SizedBox(width: 8),
+        ],
+        if (clips == null || petClipFor('Wag Tail', clips) != null) ...[
           _actionButton(
             label: 'Wag Tail',
             icon: Icons.pets,
