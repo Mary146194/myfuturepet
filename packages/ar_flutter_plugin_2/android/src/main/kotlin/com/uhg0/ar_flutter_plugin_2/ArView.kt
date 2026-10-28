@@ -68,6 +68,8 @@ class ArView(
     private val TAG: String = ArView::class.java.name
     private val viewContext: Context = context
     private var sceneView: ARSceneView
+    private var sunIntensity: Float? = null
+    private var sunColor: io.github.sceneview.math.Color? = null
     private val mainScope = CoroutineScope(Dispatchers.Main)
     private var worldOriginNode: Node? = null
 
@@ -188,6 +190,10 @@ class ArView(
             }
         )
         
+        // MyFuturePet: the sun as SceneView built it, before any light estimate.
+        sunIntensity = sceneView.mainLightNode?.intensity
+        sunColor = sceneView.mainLightNode?.color
+
         rootLayout.addView(sceneView)
 
         sessionChannel.setMethodCallHandler(onSessionMethodCall)
@@ -482,6 +488,22 @@ class ArView(
                 }
 
                 onFrame = { frameTime ->
+                    // MyFuturePet: SceneView 2.2.1 multiplies ARCore's light estimate into
+                    // the same sun node, so it compounds and drifts dark. Re-derive it from
+                    // the original sun each frame, never below half: a shady corner must
+                    // not turn the pet nearly black.
+                    val sun = mainLightNode
+                    val intensity = sunIntensity
+                    val color = sunColor
+                    lightEstimation?.let { est ->
+                        if (sun != null && intensity != null) {
+                            sun.intensity = intensity *
+                                (est.mainLightIntensity ?: 1f).coerceAtLeast(0.5f)
+                        }
+                        if (sun != null && color != null) {
+                            est.mainLightColor?.let { sun.color = color * it }
+                        }
+                    }
                     try {
                         if (!isSessionPaused) {
                             session?.update()?.let { frame ->

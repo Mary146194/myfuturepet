@@ -1837,7 +1837,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         caption: [
           _petName,
           '$_petBreed • $_petSize • $_heightLabel',
-          'Adopt me on My Future Pet • Jagna Animal Lover and Rescue Group',
+          'Adopt me on My Future Pet',
         ],
       );
       if (!mounted) return;
@@ -2019,10 +2019,13 @@ class _ARViewScreenState extends State<ARViewScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (clips == null || petClipFor('Sit', clips) != null) ...[
+          // While sitting, the same button stands the pet back up.
           _actionButton(
-            label: 'Sit',
-            icon: Icons.airline_seat_recline_normal,
-            isSelected: _currentAction == 'Sit',
+            label: _currentAction == 'Sit' ? 'Stand' : 'Sit',
+            icon: _currentAction == 'Sit'
+                ? Icons.accessibility_new
+                : Icons.airline_seat_recline_normal,
+            isSelected: false,
             onTap: () => _triggerAction('Sit'),
           ),
           const SizedBox(width: 8),

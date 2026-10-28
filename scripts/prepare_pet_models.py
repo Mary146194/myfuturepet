@@ -22,10 +22,14 @@ from shrink_glb import shrink
 
 
 def matte(gltf):
-    """Make every material non-metal. Meshy leaves metallicFactor unset (glTF default 1),
-    so a pet renders as dark chrome wherever AR's estimated room light is dim."""
+    """Make every material matte fur. Meshy leaves metallicFactor unset (glTF default 1),
+    so a pet renders as dark chrome in dim AR light, and its roughness map is glossy
+    (~0.4), so ceiling lights draw a white streak along the back."""
     for mat in gltf.get("materials", []):
-        mat.setdefault("pbrMetallicRoughness", {})["metallicFactor"] = 0.0
+        pbr = mat.setdefault("pbrMetallicRoughness", {})
+        pbr["metallicFactor"] = 0.0
+        pbr["roughnessFactor"] = 0.9
+        pbr.pop("metallicRoughnessTexture", None)
 
 
 def main():

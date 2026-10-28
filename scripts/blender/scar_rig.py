@@ -22,14 +22,17 @@ P = lambda y, z: Vector((0, y, z))   # every bone lies in the mid plane x=0
 # Joints measured from mesh slices (Blender: +Y = back, Z up), metres.
 TAIL = [P(.250, .395), P(.278, .340), P(.296, .280), P(.322, .235), P(.355, .200), P(.394, .166)]
 SHOULDER, HIP = P(-.12, .37), P(.22, .35)
-KNEE, HOCK, PAW = P(.20, .245), P(.29, .10), P(.285, .015)
+KNEE, HOCK = P(.20, .245), P(.29, .10)
+# The paw is its own bone so it can lie flat when the foot folds forward in the sit.
+ANKLE, TOE = P(.288, .045), P(.25, .008)
 # name: (head, tail, parent, connected)
 BONES = {
     "root": (P(-.15, .40), P(-.32, .47), None, False),      # neck + head stay put
     "spine": (SHOULDER, HIP, "root", False),
     "thigh": (HIP, KNEE, "spine", False),
     "shin": (KNEE, HOCK, "thigh", True),
-    "foot": (HOCK, PAW, "shin", True),
+    "foot": (HOCK, ANKLE, "shin", True),
+    "toe": (ANKLE, TOE, "foot", True),
 }
 for i in range(len(TAIL) - 1):
     BONES[f"tail_{i}"] = (TAIL[i], TAIL[i + 1], "spine" if i == 0 else f"tail_{i-1}", i > 0)
@@ -42,7 +45,8 @@ CAPSULES = [  # (bone, a, b, radius)
     ("spine", SHOULDER + P(.03, 0), HIP + P(.02, .0), .085),
     ("thigh", HIP, KNEE, .04),
     ("shin", KNEE, HOCK, .025),
-    ("foot", HOCK, PAW + P(-.01, 0), .025),
+    ("foot", HOCK, ANKLE, .025),
+    ("toe", ANKLE, TOE, .025),
 ]
 SIGMA = .012
 
@@ -134,9 +138,10 @@ for f in range(25):
 
 # Sit: rump down about the shoulders, hind legs fold, tail laid back. Local X turns.
 SIT = {"spine": -43, "thigh": -26, "shin": 103, "foot": -121,
-       "tail_0": 45, "tail_1": 30, "tail_2": 20}
+       "tail_0": 45, "tail_1": 30, "tail_2": 20,
+       "toe": 75}  # toe: paw folds flat on the floor instead of standing up
 # Halfway: rump half down, legs folded just enough to keep the paws on the floor.
-MID = {"spine": -22, "thigh": -18, "shin": 70, "foot": -80,
+MID = {"spine": -22, "thigh": -18, "shin": 70, "foot": -80, "toe": 35,
        "tail_0": 20, "tail_1": 15, "tail_2": 10}
 for k, v in [kv.split("=") for kv in args if "=" in kv]:
     (MID if k.startswith("mid.") else SIT)[k.removeprefix("mid.")] = float(v)
@@ -171,6 +176,20 @@ if "--render" in args or "--measure" in args:
     shoot(f"{OUT}/sit_side.png", (2, 0, 0.25), target=(0, 0, 0.25), ortho=0.9)
     shoot(f"{OUT}/sit_q.png", (1.6, -1.4, 0.7), target=(0, 0.05, 0.22), ortho=0.9)
     shoot(f"{OUT}/sit_back.png", (0.0, 2.0, 0.3), target=(0, 0, 0.25), ortho=0.8)
+    if "--toez" in args:
+        dg = bpy.context.evaluated_depsgraph_get(); ev = mesh.evaluated_get(dg); m = ev.to_mesh()
+        gi = {g.name: g.index for g in mesh.vertex_groups}
+        for name in ("toe", "foot"):
+            zs = [(mesh.matrix_world @ m.vertices[v.index].co).z for v in mesh.data.vertices
+                  if any(g.group == gi[name] and g.weight > .5 for g in v.groups)]
+            print("ZMIN", name, round(min(zs), 3), "of", len(zs))
+        ev.to_mesh_clear(); sys.exit(0)
+    if "--paw" in args:
+        setup_render(500)
+        shoot(f"{OUT}/paw_side.png", (1.5, 0.05, 0.08), target=(0, 0.05, 0.08), ortho=0.35)
+        shoot(f"{OUT}/paw_side2.png", (-1.5, 0.05, 0.08), target=(0, 0.05, 0.08), ortho=0.35)
+        shoot(f"{OUT}/paw_front.png", (0.5, -1.4, 0.15), target=(0, 0.1, 0.06), ortho=0.4)
+        sys.exit(0)
     sc.frame_set(9)
     print("MID min z body/tail", [round(z, 3) for z in posed_min_z()])
     if "--quick" in args:
@@ -178,6 +197,16 @@ if "--render" in args or "--measure" in args:
     shoot(f"{OUT}/sit_mid.png", (2, 0, 0.25), target=(0, 0, 0.25), ortho=0.9)
     arm.animation_data.action = None
 if "--export" in args:
+    # Matte fur (as prepare_pet_models.matte): no metal and no glossy roughness map,
+    # which drew a white streak along the back under ceiling lights.
+    for mat in bpy.data.materials:
+        bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)             if mat.use_nodes else None
+        if bsdf is None:
+            continue
+        for name, value in (("Metallic", 0.0), ("Roughness", 0.9)):
+            for link in list(bsdf.inputs[name].links):
+                mat.node_tree.links.remove(link)
+            bsdf.inputs[name].default_value = value
     sc.frame_set(0)
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.export_scene.gltf(filepath=OUT + "/scar_anim.glb", export_format='GLB',
