@@ -79,6 +79,9 @@ class ArView(
     private val nodesMap = mutableMapOf<String, ModelNode>()
     // MyFuturePet: each model's joint transforms at load, to return to standing.
     private val restPoses = java.util.WeakHashMap<ModelNode, List<Pair<Node, Transform>>>()
+    // Clips played once (Sit, stand up) and then held on their last frame.
+    private class HeldClip(val index: Int, val start: Long, val reverse: Boolean)
+    private val heldClips = java.util.WeakHashMap<ModelNode, HeldClip>()
     private var planeCount = 0
     private var selectedNode: Node? = null
     private val detectedPlanes = mutableSetOf<Plane>()
@@ -241,6 +244,19 @@ class ArView(
                     // Drag along detected floor planes. The default SceneView
                     // move hit-tests the parent node's collision shape, which an
                     // AnchorNode does not have, so the node never followed the finger.
+                    // Filament wraps time past a clip's end back to its start, so a
+                    // once-only clip is clamped here and re-applied every frame.
+                    override fun onFrame(frameTimeNanos: Long) {
+                        super.onFrame(frameTimeNanos)
+                        val held = heldClips[this] ?: return
+                        val duration = animator.getAnimationDuration(held.index)
+                        val elapsed = (frameTimeNanos - held.start) / 1e9f
+                        val t = (if (held.reverse) duration - elapsed else elapsed)
+                            .coerceIn(0f, duration)
+                        animator.applyAnimation(held.index, t)
+                        animator.updateBoneMatrices()
+                    }
+
                     private var dragLift = 0f
                     private var lastDragPose: Pose? = null
 
@@ -666,14 +682,18 @@ class ArView(
             return
         }
         node.playingAnimations.clear()
+        heldClips.remove(node)
         when (call.argument<String>("mode")) {
             "rest" -> restPoses[node]?.forEach { (child, transform) -> child.transform = transform }
             else -> {
-                val clip = call.argument<String>("clip")
-                val reverse = call.argument<Boolean>("reverse") == true
-                if (clip != null) {
-                    node.playAnimation(clip, speed = if (reverse) -1f else 1f,
-                        loop = call.argument<Boolean>("loop") == true)
+                val index = (0 until node.animationCount)
+                    .firstOrNull { node.animator.getAnimationName(it) == call.argument<String>("clip") }
+                when {
+                    index == null -> {}
+                    call.argument<Boolean>("loop") == true -> node.playAnimation(index)
+                    else -> heldClips[node] = HeldClip(
+                        index, System.nanoTime(), call.argument<Boolean>("reverse") == true
+                    )
                 }
             }
         }
