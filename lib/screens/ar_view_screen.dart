@@ -1832,7 +1832,14 @@ class _ARViewScreenState extends State<ARViewScreen>
   Future<void> _takeSnapshot() async {
     if (!mounted) return;
     if (_useArCore && !_is3DStudioMode) {
-      final png = await _arCoreKey.currentState?.snapshot();
+      // Apps like Instagram drop shared text, so the details go on the photo.
+      final png = await _arCoreKey.currentState?.snapshot(
+        caption: [
+          _petName,
+          '$_petBreed • $_petSize • $_heightLabel',
+          'Adopt me on My Future Pet • Jagna Animal Lover and Rescue Group',
+        ],
+      );
       if (!mounted) return;
       if (png == null) {
         _showMessage('Could not capture the AR view. Try again.');

@@ -51,7 +51,8 @@ class ArCorePetView extends StatefulWidget {
   State<ArCorePetView> createState() => ArCorePetViewState();
 }
 
-class ArCorePetViewState extends State<ArCorePetView> {
+class ArCorePetViewState extends State<ArCorePetView>
+    with WidgetsBindingObserver {
   ARSessionManager? _session;
   ARObjectManager? _objects;
   ARAnchorManager? _anchors;
@@ -61,13 +62,36 @@ class ArCorePetViewState extends State<ArCorePetView> {
   DateTime? _floorFoundAt;
   String? _trackingFailure;
   Timer? _distanceTimer;
+  bool _wasPaused = false;
 
   // What the banner shows when tracking is fine.
   String _status = 'Move the phone slowly over the floor to find it';
   bool _ready = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// ARCore resets motion tracking when the app comes back (e.g. from the
+  /// share sheet), so an anchor placed before is lost: clear it and ask again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _wasPaused = true;
+      _distanceTimer?.cancel();
+    } else if (state == AppLifecycleState.resumed && _wasPaused) {
+      _wasPaused = false; // the notification shade only makes us inactive
+      if (_petNode == null) return;
+      removePet();
+      _snack('Tap the floor to place ${widget.petName} again.');
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _distanceTimer?.cancel();
     _session?.dispose();
     super.dispose();
@@ -263,9 +287,9 @@ class ArCorePetViewState extends State<ArCorePetView> {
   }
 
   /// JPEG of the AR scene (camera image plus the pet), or null on failure.
-  Future<Uint8List?> snapshot() async {
+  Future<Uint8List?> snapshot({List<String>? caption}) async {
     try {
-      final image = await _session?.snapshot();
+      final image = await _session?.snapshot(caption: caption);
       return image is MemoryImage ? image.bytes : null;
     } catch (e) {
       debugPrint('ARCore snapshot failed: $e');

@@ -110,7 +110,7 @@ class ArView(
                 "dispose" -> dispose()
                 "getAnchorPose" -> handleGetAnchorPose(call, result)
                 "getCameraPose" -> handleGetCameraPose(result)
-                "snapshot" -> handleSnapshot(result)
+                "snapshot" -> handleSnapshot(call.argument<List<String>>("caption"), result)
                 "disableCamera" -> handleDisableCamera(result)
                 "enableCamera" -> handleEnableCamera(result)
                 else -> result.notImplemented()
@@ -251,8 +251,9 @@ class ArView(
                         val held = heldClips[this] ?: return
                         val duration = animator.getAnimationDuration(held.index)
                         val elapsed = (frameTimeNanos - held.start) / 1e9f
+                        // Older Filament (SceneView 2.2.1) wraps even t == duration to 0.
                         val t = (if (held.reverse) duration - elapsed else elapsed)
-                            .coerceIn(0f, duration)
+                            .coerceIn(0f, duration - 1e-3f)
                         animator.applyAnimation(held.index, t)
                         animator.updateBoneMatrices()
                     }
@@ -974,7 +975,34 @@ class ArView(
         }
     }
 
-    private fun handleSnapshot(result: MethodChannel.Result) {
+    /** MyFuturePet: a dark band at the bottom with [caption]; line 0 is the title. */
+    private fun drawCaption(bitmap: Bitmap, caption: List<String>) {
+        val canvas = android.graphics.Canvas(bitmap)
+        val w = bitmap.width.toFloat()
+        val pad = w * 0.045f
+        val paints = caption.indices.map { i ->
+            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.WHITE
+                textSize = w * (if (i == 0) 0.065f else 0.034f)
+                typeface = if (i == 0) android.graphics.Typeface.DEFAULT_BOLD
+                    else android.graphics.Typeface.DEFAULT
+                // Shrink a long line to fit the width.
+                val width = measureText(caption[i])
+                if (width > w - 2 * pad) textSize *= (w - 2 * pad) / width
+            }
+        }
+        val lineHeights = paints.map { it.textSize * 1.35f }
+        val bandTop = bitmap.height - lineHeights.sum() - 2 * pad
+        canvas.drawRect(0f, bandTop, w, bitmap.height.toFloat(),
+            android.graphics.Paint().apply { color = android.graphics.Color.argb(170, 0, 0, 0) })
+        var y = bandTop + pad
+        caption.forEachIndexed { i, line ->
+            y += lineHeights[i]
+            canvas.drawText(line, pad, y - lineHeights[i] * 0.25f, paints[i])
+        }
+    }
+
+    private fun handleSnapshot(caption: List<String>?, result: MethodChannel.Result) {
         try {
             mainScope.launch {
                 val bitmap =
@@ -994,6 +1022,7 @@ class ArView(
                                         // PNG at 100 took long enough to freeze the AR view.
                                         mainScope.launch {
                                             val bytes = withContext(Dispatchers.Default) {
+                                                if (!caption.isNullOrEmpty()) drawCaption(bitmap, caption)
                                                 val byteStream = java.io.ByteArrayOutputStream()
                                                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteStream)
                                                 bitmap.recycle()
