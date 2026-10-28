@@ -990,11 +990,19 @@ class ArView(
                             val listener =
                                 PixelCopy.OnPixelCopyFinishedListener { copyResult ->
                                     if (copyResult == PixelCopy.SUCCESS) {
-                                        val byteStream = java.io.ByteArrayOutputStream()
-                                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream)
-                                        val byteArray = byteStream.toByteArray()
-                                        result.success(byteArray)
+                                        // MyFuturePet: JPEG off the main thread; a full-screen
+                                        // PNG at 100 took long enough to freeze the AR view.
+                                        mainScope.launch {
+                                            val bytes = withContext(Dispatchers.Default) {
+                                                val byteStream = java.io.ByteArrayOutputStream()
+                                                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteStream)
+                                                bitmap.recycle()
+                                                byteStream.toByteArray()
+                                            }
+                                            result.success(bytes)
+                                        }
                                     } else {
+                                        bitmap.recycle()
                                         result.error("SNAPSHOT_ERROR", "Failed to capture snapshot", null)
                                     }
                                 }

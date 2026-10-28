@@ -262,7 +262,7 @@ class ArCorePetViewState extends State<ArCorePetView> {
     if (node != null) await _objects?.restPose(node);
   }
 
-  /// PNG of the AR scene (camera image plus the pet), or null on failure.
+  /// JPEG of the AR scene (camera image plus the pet), or null on failure.
   Future<Uint8List?> snapshot() async {
     try {
       final image = await _session?.snapshot();

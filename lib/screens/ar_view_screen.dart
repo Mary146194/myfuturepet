@@ -1843,8 +1843,8 @@ class _ARViewScreenState extends State<ARViewScreen>
           files: [
             XFile.fromData(
               png,
-              mimeType: 'image/png',
-              name: 'my_future_pet_ar.png',
+              mimeType: 'image/jpeg',
+              name: 'my_future_pet_ar.jpg',
             ),
           ],
           text: 'Meet $_petName in my room, with My Future Pet!',
