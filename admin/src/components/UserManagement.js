@@ -164,7 +164,6 @@ function UserManagement() {
 
   return (
     <div className="user-management">
-      <h2>User &amp; Shelter Account Management</h2>
       <p className="section-subtitle">
         Manage registered adopter profiles, assign administrative roles, and maintain accounts.
       </p>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import DashboardOverview from './components/DashboardOverview';
 import DashboardPage from './pages/DashboardPage';
 
@@ -55,7 +55,7 @@ test('reports query failure and recovers through retry', async () => {
   expect(await screen.findByText('Adoption request for Milo')).toBeInTheDocument();
 });
 
-test('account menu and workspace selector are keyboard-accessible controls', async () => {
+test('account menu and sidebar navigation are keyboard-accessible controls', async () => {
   localStorage.clear();
   const { container } = render(<DashboardPage user={{email:'admin@example.test'}} onLogout={() => {}} />);
   await screen.findByText('Adoption request for Milo');
@@ -68,6 +68,6 @@ test('account menu and workspace selector are keyboard-accessible controls', asy
     fireEvent.click(screen.getByRole('button', { name: 'Account options' }));
     fs.writeFileSync(path.join(process.env.REVIEW_ARTIFACT_DIR, 'premium-dashboard.html'), '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard design review — sample records</title><link rel="stylesheet" href="review.css"><link rel="stylesheet" href="workspace.css"></head><body>' + container.innerHTML + '</body></html>');
   }
-  fireEvent.change(screen.getByRole('combobox', { name: 'Go to workspace section' }), {target:{value:'reports'}});
+  fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Reports' }));
   await waitFor(() => expect(screen.getByRole('navigation').querySelector('[aria-current=page]')).toHaveTextContent('Reports'));
 });

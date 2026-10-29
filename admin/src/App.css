@@ -16,4 +16,4 @@ body,
   margin: 0;
   padding: 0;
 }
-.app-session-loading,.app-access-denied{padding:64px 24px;text-align:center;font-family:'Manrope','Segoe UI',sans-serif;color:#625448}.app-access-denied h1{margin-bottom:16px}.app-access-denied button{margin-top:24px;padding:12px 24px;background:#b54925;color:white;border:0;border-radius:7px;cursor:pointer}
+.app-session-loading,.app-access-denied {padding:64px 24px;text-align:center;font-family:'Manrope','Segoe UI',sans-serif;color:#625448}.app-access-denied h1{margin-bottom:16px}.app-access-denied button{margin-top:24px;padding:12px 24px;background:#b54925;color:white;border:0;border-radius:7px;cursor:pointer}

@@ -101,7 +101,8 @@ void main() {
     );
     expect(find.text('Camera AR'), findsOneWidget);
     expect(find.text('3D Studio'), findsOneWidget);
-    expect(find.text('Reset Turntable'), findsOneWidget);
+    expect(find.text('Reset Turntable'), findsNothing);
+    expect(find.byTooltip('Reset AR Position'), findsOneWidget);
     expect(find.text('Distance:'), findsOneWidget);
     expect(find.byTooltip('Enlarge Pet'), findsOneWidget);
     expect(find.byTooltip('Shrink Pet'), findsOneWidget);
@@ -126,7 +127,7 @@ void main() {
     await tester.tap(find.byTooltip('Enlarge Pet'));
     await tester.pump();
     expect(find.textContaining('Viewing scale: 71%'), findsOneWidget);
-    await tester.tap(find.text('Reset Turntable'));
+    await tester.tap(find.byTooltip('Reset AR Position'));
     await tester.pump();
     expect(find.textContaining('Viewing scale: 56%'), findsOneWidget);
     await tester.tap(find.byTooltip('Snapshot options'));

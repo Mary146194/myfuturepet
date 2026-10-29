@@ -6,8 +6,6 @@ import {
   FiSearch, 
   FiBookmark, 
   FiImage, 
-  FiGrid, 
-  FiList, 
   FiHeart, 
   FiX, 
   FiAlertTriangle,
@@ -26,7 +24,6 @@ function CommunityPosts() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'pinned', 'media'
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   
   // Image Lightbox Modal
   const [previewImage, setPreviewImage] = useState(null);
@@ -433,7 +430,6 @@ function CommunityPosts() {
 
       <div className="posts-header-area">
         <div>
-          <h2>Community Posts Moderation</h2>
           <p className="section-subtitle">
             Monitor, review, and moderate community feed updates, shelter stories, and pet announcements.
           </p>
@@ -445,22 +441,6 @@ function CommunityPosts() {
           >
             <FiPlus /> Create Post
           </button>
-          <div className="view-mode-toggle">
-            <button
-              className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-              onClick={() => setViewMode('grid')}
-              title="Card Grid View"
-            >
-              <FiGrid /> Cards
-            </button>
-            <button
-              className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-              title="Compact Table View"
-            >
-              <FiList /> Table
-            </button>
-          </div>
           <button onClick={fetchPosts} className="refresh-btn" disabled={loading}>
             <FiRefreshCw className={loading ? 'spin-icon' : ''} /> Refresh
           </button>
@@ -554,7 +534,7 @@ function CommunityPosts() {
               : 'There are no active community posts recorded in the database yet.'}
           </p>
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : (
         /* CARD FEED VIEW */
         <div className="posts-cards-grid">
           {filteredPosts.map((post) => {
@@ -649,92 +629,6 @@ function CommunityPosts() {
               </div>
             );
           })}
-        </div>
-      ) : (
-        /* TABLE VIEW */
-        <div className="posts-table-container">
-          <table className="posts-table">
-            <thead>
-              <tr>
-                <th>Content & Media</th>
-                <th>Author</th>
-                <th>Shelter / Pet</th>
-                <th>Likes</th>
-                <th>Comments</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPosts.map((post) => (
-                <tr key={post.id} className={post.is_pinned ? 'pinned-row' : ''}>
-                  <td className="post-content-cell">
-                    <div className="post-text-clamp">{post.content}</div>
-                    {post.image_url && (
-                      <button 
-                        className="table-media-chip"
-                        onClick={() => setPreviewImage({ url: post.image_url, caption: post.content, author: post.author?.full_name })}
-                      >
-                        <FiImage /> View Photo
-                      </button>
-                    )}
-                  </td>
-                  <td>
-                    <div className="author-cell">
-                      <strong>{post.author?.full_name || 'Shelter Staff'}</strong>
-                      <small className="muted-text">{post.author?.email || ''}</small>
-                    </div>
-                  </td>
-                  <td>
-                    <div>{post.shelter?.name || 'Community'}</div>
-                    {post.pet?.name && (
-                      <span className="table-pet-pill"><MdPets /> {post.pet.name}</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className="likes-pill"><FiHeart /> {post.like_count || 0}</span>
-                  </td>
-                  <td>
-                    <button 
-                      type="button"
-                      className="table-comment-chip"
-                      onClick={() => openCommentsModal(post)}
-                      title="View & Moderate Comments"
-                    >
-                      <FiMessageSquare /> {commentsByPost[post.id]?.length || 0}
-                    </button>
-                  </td>
-                  <td>
-                    <span className={`status-pill ${post.is_pinned ? 'status-approved' : 'status-withdrawn'}`}>
-                      {post.is_pinned ? (
-                        <><FiBookmark /> Pinned</>
-                      ) : (
-                        'Standard'
-                      )}
-                    </span>
-                  </td>
-                  <td>{new Date(post.created_at).toLocaleDateString()}</td>
-                  <td className="actions">
-                    <button 
-                      onClick={() => togglePinPost(post.id, post.is_pinned)}
-                      className={`status-btn ${post.is_pinned ? 'disable' : 'enable'}`}
-                      title={post.is_pinned ? 'Unpin Post' : 'Pin to Top of Feed'}
-                    >
-                      <FiBookmark />
-                    </button>
-                    <button 
-                      onClick={() => openDeleteModal(post)}
-                      className="delete-btn" 
-                      title="Moderate / Remove Post"
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 

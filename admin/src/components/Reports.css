@@ -464,7 +464,7 @@
   box-shadow: 0 10px 22px rgba(71, 85, 105, 0.35);
 }
 
-@media print {
+@media print{
   body {
     background: white !important;
   }
@@ -481,8 +481,7 @@
     border: none !important;
     padding: 0 !important;
   }
-  .stat-card,
-  .distribution-card {
+  .stat-card {
     break-inside: avoid;
     box-shadow: none !important;
     border: 1px solid #ddd !important;

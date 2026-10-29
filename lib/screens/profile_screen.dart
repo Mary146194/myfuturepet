@@ -420,9 +420,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 24),
 
-                      // App Settings
+                      // App Settings, Help & Support
                       _buildSectionTitle(
-                        'App Settings',
+                        'More',
                         icon: Icons.settings_outlined,
                       ),
 

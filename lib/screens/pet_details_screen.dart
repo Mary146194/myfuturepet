@@ -182,7 +182,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 'Jagna, Bohol, Philippines')
             .toString();
 
-    final String age = (_pet['age'] ?? 'Young').toString();
+    final String age = (_pet['age'] ?? 'Age unknown').toString();
     final String weight =
         (_pet['weight'] ??
                 (_pet['weight_kg'] != null
@@ -659,51 +659,6 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(
-                                      0xFF14532D,
-                                    ).withValues(alpha: 0.45)
-                                  : const Color(0xFFD4F7DF),
-                              borderRadius: BorderRadius.circular(20),
-                              border: isDark
-                                  ? Border.all(
-                                      color: const Color(
-                                        0xFF22C55E,
-                                      ).withValues(alpha: 0.4),
-                                    )
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check_circle_rounded,
-                                  size: 13,
-                                  color: isDark
-                                      ? const Color(0xFF4ADE80)
-                                      : const Color(0xFF16A34A),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Health Records',
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? const Color(0xFF4ADE80)
-                                        : const Color(0xFF16A34A),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
 
@@ -752,20 +707,6 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                         ],
                       ),
 
-                      const SizedBox(height: 12),
-
-                      // Note
-                      Text(
-                        'Rescue pets undergo rigorous medical checkup and quarantine before rehoming.',
-                        style: TextStyle(
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF88989D),
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                          height: 1.35,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -839,7 +780,15 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                             }
                           }
                           if (personalityList.isEmpty) {
-                            personalityList = ['Gentle', 'smart'];
+                            return Text(
+                              'Not provided by the shelter yet.',
+                              style: TextStyle(
+                                color: isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF4B5E63),
+                                fontSize: 14,
+                              ),
+                            );
                           }
 
                           return Wrap(

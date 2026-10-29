@@ -137,9 +137,11 @@ for f in range(25):
     key_z(f, [SWING[i] * math.sin(2 * math.pi * 2 * f / 24 - 0.7 * i) for i in range(len(TAILS))])
 
 # Sit: rump down about the shoulders, hind legs fold, tail laid back. Local X turns.
-SIT = {"spine": -43, "thigh": -26, "shin": 103, "foot": -121,
+SIT = {"spine": -43, "thigh": -26, "shin": 99, "foot": -128,
        "tail_0": 45, "tail_1": 30, "tail_2": 20,
-       "toe": 52}  # toe: paw lies flat (about 8 degrees) instead of pointing down
+       # Heel on the floor, hock rising ~10 deg to the paw, toe ~28 deg down so the
+       # pad rests on the floor (fully upright or fully flat both read as a limp foot).
+       "toe": 82}
 # Halfway: rump half down, legs folded just enough to keep the paws on the floor.
 MID = {"spine": -22, "thigh": -18, "shin": 70, "foot": -80, "toe": 35,
        "tail_0": 20, "tail_1": 15, "tail_2": 10}

@@ -160,7 +160,6 @@ function SystemLogs() {
 
       <div className="logs-header">
         <div>
-          <h2>System Logs &amp; Audit Trail</h2>
           <p className="section-subtitle">
             Immutable audit record of administrative operations, account modifications, and platform events.
           </p>

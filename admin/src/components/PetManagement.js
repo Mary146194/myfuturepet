@@ -3,7 +3,7 @@ import { supabase } from '../config/supabaseClient';
 import {
   FiSearch, FiRefreshCw, FiTrash2, FiEdit2, FiCheckCircle,
   FiPlus, FiX, FiFilter,
-  FiGrid, FiList, FiAlertTriangle
+  FiAlertTriangle
 } from 'react-icons/fi';
 import { MdPets } from 'react-icons/md';
 import ImageUploader from './ImageUploader';
@@ -56,7 +56,6 @@ function PetManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'dog' | 'cat'
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'available' | 'pending' | 'adopted'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   
   // Modal states
   const [modalMode, setModalMode] = useState(null); // null | 'add' | 'edit'
@@ -287,7 +286,6 @@ function PetManagement() {
     <div className="pet-management">
       <div className="pet-mgmt-header">
         <div>
-          <h2>Pet Profiles &amp; Listings</h2>
           <p className="section-subtitle">
             Manage adoptable rescue animals, health records, and adoption status for Jagna Animal Lover and Rescue Group
           </p>
@@ -360,23 +358,6 @@ function PetManagement() {
             </div>
           </div>
 
-          {/* View Switcher */}
-          <div className="view-toggle">
-            <button
-              className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-              onClick={() => setViewMode('grid')}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -395,7 +376,7 @@ function PetManagement() {
             <FiPlus /> Register a Pet
           </button>
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : (
         <div className="pets-grid">
           {filteredPets.map((pet) => (
             <div className="pet-card" key={pet.id}>
@@ -484,87 +465,6 @@ function PetManagement() {
               </div>
             </div>
           ))}
-        </div>
-      ) : (
-        /* Table View */
-        <div className="pet-table-container">
-          <table className="pet-data-table">
-            <thead>
-              <tr>
-                <th>Pet</th>
-                <th>Type / Breed</th>
-                <th>Gender &amp; Size</th>
-                <th>Vaccination</th>
-                <th>Rescue Shelter</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPets.map((pet) => (
-                <tr key={pet.id}>
-                  <td>
-                    <div className="table-pet-cell">
-                      <img
-                        src={getPetDisplayImage(pet)}
-                        alt={pet.name}
-                        className="table-pet-thumb"
-                        onError={(e) => handleImgError(e, pet.type)}
-                      />
-                      <div>
-                        <strong>{pet.name}</strong>
-                        {pet.color && <small className="table-subtext">{pet.color}</small>}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="table-type-badge">{pet.type}</span>
-                    <div className="table-breed-text">{pet.breed || 'Unknown'}</div>
-                  </td>
-                  <td>
-                    <div>{pet.gender}</div>
-                    <small className="table-subtext">{pet.size || 'Medium'}</small>
-                  </td>
-                  <td>
-                    <span className={`vac-indicator vac-${pet.vaccination_status}`}>
-                      {pet.vaccination_status ? pet.vaccination_status.replace('_', ' ') : 'unvaccinated'}
-                    </span>
-                  </td>
-                  <td>{pet.shelter?.name || 'JALRG Shelter'}</td>
-                  <td>
-                    <select
-                      className="table-status-select"
-                      value={pet.status}
-                      onChange={(e) => handleStatusChange(pet.id, e.target.value)}
-                    >
-                      <option value="available">Available</option>
-                      <option value="pending">Pending</option>
-                      <option value="adopted">Adopted</option>
-                      <option value="removed">Removed</option>
-                    </select>
-                  </td>
-                  <td>
-                    <div className="table-actions-cell">
-                      <button
-                        className="table-btn-icon"
-                        onClick={() => handleOpenEditModal(pet)}
-                        title="Edit Pet"
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button
-                        className="table-btn-icon danger"
-                        onClick={() => setDeleteTarget(pet)}
-                        title="Delete Pet"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 

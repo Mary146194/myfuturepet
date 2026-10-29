@@ -257,7 +257,6 @@ function Reports() {
 
       <div className="reports-header-area">
         <div>
-          <h2>Analytics & System Reports</h2>
           <p className="section-subtitle">
             Comprehensive platform records, adoption metrics, and analytical summaries for Jagna Animal Lover & Rescue Group.
           </p>

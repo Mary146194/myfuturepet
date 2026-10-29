@@ -1252,11 +1252,13 @@ void dispose() {
                               ),
                             ),
 
+                            // PERSONALITY (only when the shelter wrote one)
+                            if ((pet['personalityShort'] ?? '')
+                                .toString()
+                                .isNotEmpty) ...[
                             const SizedBox(
                               width: 5,
                             ),
-
-                            // PERSONALITY
                             Flexible(
                               child:
                                   Container(
@@ -1305,9 +1307,7 @@ void dispose() {
                                     Flexible(
                                       child:
                                           Text(
-                                        pet['personalityShort']
-                                                ?.toString() ??
-                                            'Friendly',
+                                        pet['personalityShort'].toString(),
                                         maxLines:
                                             1,
                                         overflow:
@@ -1328,6 +1328,7 @@ void dispose() {
                                 ),
                               ),
                             ),
+                            ],
                           ],
                         ),
                       ],
@@ -1766,40 +1767,3 @@ void dispose() {
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import 'package:flutter/material.dart';
-
-// import '../pet_data.dart';
-// import 'pet_details_screen.dart';

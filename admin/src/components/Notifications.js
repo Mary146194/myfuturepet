@@ -209,7 +209,6 @@ function Notifications() {
 
       <div className="notifications-header-area">
         <div>
-          <h2>Broadcast Announcements &amp; Notifications</h2>
           <p className="section-subtitle">
             Publish official updates, rescue notices, and adoption reminders to mobile app adopters and shelter staff.
           </p>

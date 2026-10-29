@@ -166,15 +166,13 @@ class PetService {
       } catch (_) {}
     }
 
-    final temperamentStr = raw['temperament']?.toString() ?? 'Friendly, Gentle';
+    // Only what the shelter wrote; the details screen says when it is missing.
+    final temperamentStr = raw['temperament']?.toString() ?? '';
     final personalityList = temperamentStr
         .split(',')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
-    if (personalityList.isEmpty) {
-      personalityList.addAll(['Friendly', 'Gentle']);
-    }
 
     final vacStatus = raw['vaccination_status']?.toString() ?? 'Not recorded';
     final isVaccinated = const {

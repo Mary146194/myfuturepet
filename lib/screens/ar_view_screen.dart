@@ -1135,8 +1135,9 @@ class _ARViewScreenState extends State<ARViewScreen>
 
                   // 7. Bottom Shutter / Placement Button
                   // In real floor AR the pet is placed by tapping the floor and
-                  // re-placed with the side reset button, so no shutter there.
-                  if (!_useArCore || _is3DStudioMode)
+                  // re-placed with the side reset button, so no shutter there;
+                  // 3D Studio already has the side reset button too.
+                  if (!_useArCore && !_is3DStudioMode)
                     Positioned(
                       bottom: 16,
                       left: 0,
@@ -2203,33 +2204,6 @@ class _ARViewScreenState extends State<ARViewScreen>
   // ============================================================
 
   Widget _buildPlacementShutterButton() {
-    if (_is3DStudioMode) {
-      return Center(
-        child: ElevatedButton.icon(
-          onPressed: _resetAR,
-          icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
-          label: const Text(
-            'Reset Turntable',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 13.5,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF008F82),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            elevation: 6,
-          ),
-        ),
-      );
-    }
-
     return Center(
       child: GestureDetector(
         key: const ValueKey('camera-ar-shutter'),
@@ -2325,37 +2299,27 @@ class _ARViewScreenState extends State<ARViewScreen>
             children: [
               _buildHelpRow(
                 Icons.touch_app,
-                'Real floor AR (ARCore phones): tap the round shutter button and move the phone slowly over a lit, textured floor.',
+                'Camera AR: move the phone slowly over a lit floor. When the floor is found, tap it to place $_petName at real size.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(
                 Icons.open_with,
-                'Preview: aim below the horizon and tap the floor to stand $_petName there. Size is approximate and the pet does not follow you as you walk.',
-              ),
-              const SizedBox(height: 10),
-              _buildHelpRow(
-                Icons.straighten,
-                'Use the "Drag to Move" handle under the pet to slide it across the floor.',
-              ),
-              const SizedBox(height: 10),
-              _buildHelpRow(
-                Icons.pin_drop,
-                'Pick 1.0m, 1.5m or 2.0m to stand the pet that far from you.',
-              ),
-              const SizedBox(height: 10),
-              _buildHelpRow(
-                Icons.camera_alt,
-                'Tap the snapshot button for instructions to save this view with your device or browser.',
+                'Drag $_petName to move it. Reset lifts it so you can place it again.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(
                 Icons.pets,
-                'Tap Sit, Wag Tail, or Speak to trigger real-time reactions.',
+                'Sit, Wag Tail and Speak make $_petName react.',
               ),
               const SizedBox(height: 10),
               _buildHelpRow(
-                Icons.refresh,
-                'Tap Reset to return $_petName to the center with 1:1 life-scale.',
+                Icons.camera_alt,
+                'The camera button captures this view to save or share.',
+              ),
+              const SizedBox(height: 10),
+              _buildHelpRow(
+                Icons.view_in_ar,
+                '3D Studio: turn the model with a finger to see $_petName from every side.',
               ),
             ],
           ),

@@ -198,7 +198,6 @@ function AdoptionMonitoring() {
 
   return (
     <div className="adoption-monitoring">
-      <h2>Adoption Activities Monitoring</h2>
       <p className="section-subtitle">
         Review, screen, and track pet adoption requests and applicant qualifications.
       </p>

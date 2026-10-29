@@ -4,7 +4,6 @@ import {
   FiCalendar, FiRefreshCw, FiCheckCircle, FiXCircle,
   FiClock, FiUser, FiPhone, FiMail, FiMapPin,
   FiSearch, FiFilter, FiCheck, FiX,
-  FiGrid, FiList
 } from 'react-icons/fi';
 import { MdPets } from 'react-icons/md';
 import './AppointmentManagement.css';
@@ -15,7 +14,6 @@ function AppointmentManagement() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
 
   // Action / Detail modals
   const [selectedAppt, setSelectedAppt] = useState(null);
@@ -217,7 +215,6 @@ function AppointmentManagement() {
     <div className="appointment-management">
       <div className="appt-header">
         <div>
-          <h2>Shelter Visit Appointments</h2>
           <p className="section-subtitle">
             Review and schedule adopter visits and meet-and-greets at Jagna Animal Lover and Rescue Group
           </p>
@@ -295,22 +292,6 @@ function AppointmentManagement() {
             </div>
           </div>
 
-          <div className="view-toggle">
-            <button
-              className={`view-btn ${viewMode === 'cards' ? 'active' : ''}`}
-              onClick={() => setViewMode('cards')}
-              title="Card View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -326,7 +307,7 @@ function AppointmentManagement() {
           <h3>No appointments found</h3>
           <p>There are no appointments matching your current search or status filter.</p>
         </div>
-      ) : viewMode === 'cards' ? (
+      ) : (
         <div className="appointments-grid">
           {filteredAppointments.map((appt) => (
             <div className={`appt-card status-${appt.status}`} key={appt.id}>
@@ -443,99 +424,6 @@ function AppointmentManagement() {
               </div>
             </div>
           ))}
-        </div>
-      ) : (
-        /* Table View */
-        <div className="appt-table-container">
-          <table className="appt-data-table">
-            <thead>
-              <tr>
-                <th>Scheduled Date &amp; Time</th>
-                <th>Type</th>
-                <th>Adopter Details</th>
-                <th>Pet</th>
-                <th>Shelter</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAppointments.map((appt) => (
-                <tr key={appt.id}>
-                  <td>
-                    <div className="table-datetime">
-                      <FiCalendar />
-                      <strong>{formatScheduledTime(appt.scheduled_at)}</strong>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="table-type-badge">
-                      {getAppointmentTypeLabel(appt.appointment_type)}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="table-adopter-cell">
-                      <strong>{appt.applicant?.full_name || 'Adopter'}</strong>
-                      <small className="table-subtext">{appt.applicant?.email}</small>
-                      {appt.applicant?.phone && (
-                        <small className="table-subtext">{appt.applicant.phone}</small>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="table-pet-info">
-                      <strong>{appt.pet?.name || 'General Visit'}</strong>
-                      {appt.pet?.breed && <small>{appt.pet.breed}</small>}
-                    </div>
-                  </td>
-                  <td>
-                    <div>{appt.shelter?.name || 'JALRG Shelter'}</div>
-                  </td>
-                  <td>{getStatusBadge(appt.status)}</td>
-                  <td>
-                    <div className="table-actions-cell">
-                      {appt.status === 'pending' && (
-                        <button
-                          className="btn-action-sm confirm"
-                          title="Confirm Appointment"
-                          onClick={() => {
-                            setActionModal({ type: 'confirm', appt });
-                            setActionNotes(appt.notes || '');
-                          }}
-                        >
-                          <FiCheck />
-                        </button>
-                      )}
-                      {appt.status === 'confirmed' && (
-                        <button
-                          className="btn-action-sm complete"
-                          title="Mark Visit Completed"
-                          onClick={() => {
-                            setActionModal({ type: 'complete', appt });
-                            setActionNotes(appt.notes || '');
-                          }}
-                        >
-                          <FiCheckCircle />
-                        </button>
-                      )}
-                      {appt.status !== 'cancelled' && appt.status !== 'completed' && (
-                        <button
-                          className="btn-action-sm cancel"
-                          title="Cancel Appointment"
-                          onClick={() => {
-                            setActionModal({ type: 'cancel', appt });
-                            setActionNotes(appt.notes || '');
-                          }}
-                        >
-                          <FiX />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 

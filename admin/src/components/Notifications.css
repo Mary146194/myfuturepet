@@ -81,7 +81,7 @@
   align-items: start;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1080px){
   .notifications-split-grid {
     grid-template-columns: 1fr;
   }

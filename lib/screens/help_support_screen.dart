@@ -17,7 +17,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     {
       'question': 'How does the adoption process work?',
       'answer':
-          '1. Find an adoptable pet you love on the Home or Pets tab.\n2. Tap "Apply for Adoption" to submit your structured questionnaire.\n3. Shelter staff review your application and schedule an interview.\n4. Complete the adoption agreement and welcome your new best friend home!',
+          '1. Find an adoptable pet you love on the Home or Pets tab.\n2. Tap "Adopt Me" to fill in the adoption questionnaire.\n3. Shelter staff review your application and schedule an interview.\n4. Complete the adoption agreement and welcome your new best friend home!',
     },
     {
       'question': 'Is pet adoption really 100% free?',
@@ -37,17 +37,17 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     {
       'question': 'How do I track my submitted application?',
       'answer':
-          'Navigate to your Profile tab and tap "My Applications". Your active applications update live with review statuses: Submitted, Under Review, Approved, or Scheduled for Visit.',
+          'Navigate to your Profile tab and tap "My Applications". Each application shows its review status: Pending, Under Review, Approved or Rejected.',
     },
     {
       'question': 'How does the AR 3D Preview work?',
       'answer':
-          'On supported devices, tap "AR Preview" on a pet\'s profile to open the camera. Point your phone at a flat floor surface to view a true-to-scale 3D companion in your living room!',
+          'On supported devices, tap "View in AR" on a pet\'s profile, move the phone slowly over the floor, then tap the floor to place the pet at its real size.',
     },
     {
       'question': 'Why can\'t I use AR View on my device?',
       'answer':
-          'AR View requires an ARCore-compatible Android device with camera tracking. If your hardware is unsupported, the app seamlessly switches to our Virtual Room Fallback so you can still inspect and interact with the 3D pet without errors.',
+          'AR View requires an ARCore-compatible Android device with camera tracking. On other phones, 3D Studio still lets you turn and inspect the pet\'s 3D model.',
     },
     {
       'question': 'How do I save a pet to my favorites?',
@@ -57,237 +57,20 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     {
       'question': 'How do I update my profile information?',
       'answer':
-          'Navigate to your Profile tab and tap "Edit Profile". You can update your full name, contact phone number, home address, and upload a custom profile picture.',
+          'Navigate to your Profile tab and tap "Edit Profile". You can change your name and profile picture.',
     },
   ];
 
-  void _callPhone(String phone) async {
-    final uri = Uri.parse('tel:${phone.replaceAll(' ', '')}');
+  Future<void> _openMessenger() async {
+    final uri = Uri.parse('https://m.me/jagnaanimallover');
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Contact shelter at: $phone')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Contact shelter at: $phone')),
-        );
-      }
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Messenger. Please try again.')),
+      );
     }
-  }
-
-  void _sendEmail(String email) async {
-    final uri = Uri.parse('mailto:$email?subject=My Future Pet Support Request');
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Email support at: $email')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Email support at: $email')),
-        );
-      }
-    }
-  }
-
-  void _showFeedbackDialog() {
-    final isDark = ThemeService.isDarkMode(context);
-    final dialogBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final dialogText = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF062B35);
-    final dialogSubText = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final inputBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final inputBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
-    final subjectController = TextEditingController();
-    final messageController = TextEditingController();
-    String category = 'Feedback';
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: dialogBg,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(
-                'Send Feedback or Report Issue',
-                style: TextStyle(
-                  color: dialogText,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Category',
-                      style: TextStyle(
-                        color: dialogText,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: category,
-                      dropdownColor: dialogBg,
-                      style: TextStyle(
-                        color: dialogText,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: inputBg,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorder),
-                        ),
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'Feedback',
-                          child: Text('Feedback & Suggestions', style: TextStyle(color: dialogText)),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Bug Report',
-                          child: Text('Technical Issue / Bug', style: TextStyle(color: dialogText)),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Adoption Help',
-                          child: Text('Adoption Application Help', style: TextStyle(color: dialogText)),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() => category = val);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Subject',
-                      style: TextStyle(
-                        color: dialogText,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: subjectController,
-                      style: TextStyle(color: dialogText, fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Brief summary',
-                        hintStyle: TextStyle(color: dialogSubText, fontSize: 13),
-                        filled: true,
-                        fillColor: inputBg,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorder),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Message',
-                      style: TextStyle(
-                        color: dialogText,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: messageController,
-                      style: TextStyle(color: dialogText, fontSize: 13),
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Describe your question or issue...',
-                        hintStyle: TextStyle(color: dialogSubText, fontSize: 13),
-                        filled: true,
-                        fillColor: inputBg,
-                        contentPadding: const EdgeInsets.all(12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorder),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: dialogSubText),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final message = messageController.text.trim();
-                    if (message.isEmpty) return;
-                    Navigator.pop(dialogCtx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Thank you! Your feedback has been received.',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Submit'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -403,42 +186,22 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   const SizedBox(height: 16),
                   Divider(height: 1, color: borderCol),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _callPhone('+63 900 000 0000'),
-                          icon: const Icon(Icons.phone_outlined, size: 16),
-                          label: const Text('Call Shelter'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: primaryColor,
-                            side: const BorderSide(color: primaryColor),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _openMessenger,
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                      label: const Text('Chat on Messenger'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: tealColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () =>
-                              _sendEmail('support@myfuturepet.org'),
-                          icon: const Icon(Icons.mail_outline_rounded, size: 16),
-                          label: const Text('Email Help'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: tealColor,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -509,75 +272,6 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     );
                   },
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ==================================================
-            // SEND FEEDBACK BUTTON
-            // ==================================================
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF7C2D12).withValues(alpha: 0.25)
-                    : const Color(0xFFFFF7ED),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF9A3412).withValues(alpha: 0.5)
-                      : const Color(0xFFFED7AA),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.rate_review_outlined,
-                    color: Color(0xFFEA580C),
-                    size: 26,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Have an Idea or Encountered a Bug?',
-                          style: TextStyle(
-                            color: textCol,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Send feedback to our development team',
-                          style: TextStyle(
-                            color: subTextCol,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _showFeedbackDialog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEA580C),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: const Text('Send'),
-                  ),
-                ],
               ),
             ),
 

@@ -195,13 +195,10 @@ function DashboardPage({ user, onLogout }) {
     return menuGroups;
   }, [menuGroups, activeRole]);
 
-  const currentItemInfo = useMemo(() => {
-    for (const group of visibleMenuGroups) {
-      const found = group.items.find((i) => i.id === activeTab);
-      if (found) return { group: group.header, item: found };
-    }
-    return { group: 'Management', item: { label: 'Dashboard' } };
-  }, [activeTab, visibleMenuGroups]);
+  const currentLabel = useMemo(
+    () => visibleMenuGroups.flatMap((g) => g.items).find((i) => i.id === activeTab)?.label || 'Dashboard',
+    [activeTab, visibleMenuGroups],
+  );
 
   const renderContent = () => {
     switch (activeTab) {
@@ -325,25 +322,13 @@ function DashboardPage({ user, onLogout }) {
               </>
             ) : (
               <>
-                <div className="breadcrumb-trail">
-                  <span>{currentItemInfo.group}</span>
-                  <span className="breadcrumb-sep">/</span>
-                  <span className="breadcrumb-current">{currentItemInfo.item.label}</span>
-                </div>
-                <h1 className="tab-heading">{currentItemInfo.item.label}</h1>
+                <h1 className="tab-heading">{currentLabel}</h1>
               </>
             )}
           </div>
 
-          <label className="workspace-jump"><span>Go to</span><select aria-label="Go to workspace section" value={activeTab} onChange={event => handleSelectTab(event.target.value)}>{visibleMenuGroups.flatMap(group => group.items).map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-
           {/* Topbar Role Switcher Indicator & Quick-Switch */}
           <div className="topbar-role-switcher">
-            <div className={`role-pill-badge ${activeRole === 'shelter_staff' ? 'staff-badge' : 'admin-badge'}`}>
-              <span className="role-badge-text">
-                {activeRole === 'shelter_staff' ? 'Shelter Staff (JALRG)' : 'Admin'}
-              </span>
-            </div>
             <button
               type="button"
               className="role-switch-pill-btn"
@@ -356,15 +341,6 @@ function DashboardPage({ user, onLogout }) {
           </div>
 
           <div className="profile-area" ref={profileRef}>
-            <button
-              className="notif-btn"
-              title="View Notifications"
-              onClick={() => handleSelectTab('notifications')}
-            >
-              <FiBell />
-              {badgeCounts.pendingAdoptions > 0 && <span className="notif-badge" />}
-            </button>
-
             <button
               type="button"
               className="profile-trigger"
@@ -428,8 +404,8 @@ function DashboardPage({ user, onLogout }) {
                 </h3>
                 <p>
                   {targetRole === 'shelter_staff'
-                    ? 'Enter the Shelter Staff password to access rescue operations and shelter tools.'
-                    : 'Enter the Admin password to access system administration and controls.'}
+                    ? 'Confirm it is you to open rescue operations and shelter tools.'
+                    : 'Confirm it is you to open system administration.'}
                 </p>
               </div>
               <button
@@ -453,13 +429,14 @@ function DashboardPage({ user, onLogout }) {
               <div className="role-input-group">
                 <label htmlFor="role-password-input">
                   <FiLock className="input-label-icon" />
-                  {targetRole === 'shelter_staff' ? 'Shelter Staff Password' : 'Admin Password'}
+                  Your account password
                 </label>
                 <div className="role-input-wrap">
                   <input
                     id="role-password-input"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder={`Enter ${targetRole === 'shelter_staff' ? 'shelter staff' : 'admin'} password...`}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
                     value={rolePassword}
                     onChange={(e) => {
                       setRolePassword(e.target.value);
@@ -479,8 +456,6 @@ function DashboardPage({ user, onLogout }) {
                   </button>
                 </div>
               </div>
-
-              <p className="text-xs text-slate-500">Enter your own account password to switch roles.</p>
 
               <div className="role-modal-actions">
                 <button

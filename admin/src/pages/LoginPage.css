@@ -23,10 +23,6 @@
 .portal-shell .topbar-app-tag { font-size: 10px; color: #ffe2cf; text-transform: uppercase; letter-spacing: .12em; }
 .portal-shell .topbar-location { display: flex; align-items: center; gap: 8px; color: #ffe2cf; font-size: 12px; }
 .portal-shell .portal-main { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; padding-bottom: 24px; }
-.portal-shell .portal-intro { width: 100%; padding: 20px 24px 86px; text-align: center; background: var(--portal-orange); color: #fff; }
-.portal-shell .portal-intro h1 { font-size: 34px; letter-spacing: -.03em; font-weight: 650; line-height: 1.2; margin: 0 0 12px; text-wrap: balance; }
-.portal-shell .phone-break { display: none; }
-.portal-shell .portal-intro p { color: #ffe2cf; font-size: 14px; line-height: 1.6; margin: 0; }
 .portal-shell .portal-auth { position: relative; width: calc(100% - 48px); max-width: 456px; margin-top: -50px; padding: 34px 36px 14px; background: #fff; border-radius: 14px; box-shadow: 0 16px 50px #623c2114; }
 .portal-shell .auth-card-header { margin-bottom: 28px; }
 .portal-shell .auth-card-header h1 { font-size: 27px; font-weight: 650; letter-spacing: -.025em; line-height: 1.2; margin: 0 0 10px; }
@@ -67,12 +63,9 @@
 .portal-shell .portal-footer { width: 100%; max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 20px 40px; font-size: 10px; color: var(--portal-muted); }
 .portal-shell .login-spinner { animation: login-spin 1s linear infinite; }
 @keyframes login-spin { to { transform: rotate(360deg); } }
-@media (max-width: 599px) {
+@media (max-width: 599px){
   .portal-shell .topbar-inner { padding: 20px 24px; }
   .portal-shell .topbar-location { display: none; }
-  .portal-shell .portal-intro { text-align: left; padding: 24px 24px 72px; }
-  .portal-shell .portal-intro h1 { font-size: 31px; }
-  .portal-shell .phone-break { display: block; }
   .portal-shell .portal-auth { margin-top: -36px; padding: 28px 24px 10px; width: calc(100% - 32px); }
   .portal-shell .auth-card-header h1 { font-size: 25px; }
   .portal-shell .workspace-context { padding-top: 24px; }
@@ -80,8 +73,8 @@
   .portal-shell .workspace-capabilities span { font-size: 10px; }
   .portal-shell .portal-footer { padding: 16px 24px; }
 }
-@media (max-width: 359px) { .portal-shell .topbar-app-name { font-size: 17px; }.portal-shell .topbar-app-tag { font-size: 9px; }.portal-shell .portal-auth { padding-inline: 20px; }.portal-shell .workspace-capabilities { gap: 8px 12px; } }
-@media (prefers-reduced-motion: reduce) { .portal-shell * { transition: none; animation: none; } }
+@media (max-width: 359px){ .portal-shell .topbar-app-name { font-size: 17px; }.portal-shell .topbar-app-tag { font-size: 9px; }.portal-shell .portal-auth { padding-inline: 20px; }.portal-shell .workspace-capabilities { gap: 8px 12px; } }
+@media (prefers-reduced-motion: reduce){ .portal-shell * { transition: none; animation: none; } }
 
 .portal-shell .signin-back{align-self:flex-start;margin:18px 24px;color:#813b23;font-size:12px;text-decoration:underline;text-underline-offset:4px;min-height:24px}.portal-shell .signin-back:focus-visible{outline:3px solid #b8562f;outline-offset:4px}
 
