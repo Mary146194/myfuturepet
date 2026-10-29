@@ -32,7 +32,7 @@ String petHeightLabel({required String petType, required String petSize}) {
 /// scale and the pet just looks small.
 const double minPlacementDistanceM = 0.5;
 const double maxPlacementDistanceM = 4.0;
-const int minFloorAgeMs = 1000;
+const int minFloorAgeMs = 400;
 
 /// User-facing advice for an ARCore TrackingFailureReason name, or null when
 /// tracking is fine.

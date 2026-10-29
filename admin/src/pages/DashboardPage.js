@@ -3,7 +3,7 @@ import appLogo from '../assets/logo.png';
 import {
   FiBarChart2, FiUsers, FiHome, FiClipboard, FiMessageSquare,
   FiFileText, FiBell, FiActivity, FiShield,
-  FiChevronDown, FiCalendar, FiDownload, FiLogOut,
+  FiChevronDown, FiCalendar, FiLogOut,
   FiMenu, FiX,
   FiRepeat, FiLock, FiEye, FiEyeOff, FiUserCheck,
 } from 'react-icons/fi';
@@ -393,62 +393,7 @@ function DashboardPage({ user, onLogout }) {
                 <div className="dropdown-user-header">
                   <strong>{activeRole === 'shelter_staff' ? 'Shelter Staff (JALRG)' : displayName}</strong>
                   <span>{displayEmail}</span>
-                  <span className={`role-tag ${activeRole === 'shelter_staff' ? 'role-tag-staff' : ''}`}>
-                    {activeRole === 'shelter_staff' ? 'Shelter Staff (JALRG)' : 'Admin'}
-                  </span>
                 </div>
-                <div className="dropdown-divider" />
-                <button
-                  type="button"
-                  className="dropdown-item role-switch-dropdown-item"
-                  onClick={() => handleOpenRoleModal(activeRole === 'admin' ? 'shelter_staff' : 'admin')}
-                >
-                  <FiRepeat />
-                  <span>{activeRole === 'admin' ? 'Switch to Shelter Staff' : 'Switch to Admin'}</span>
-                </button>
-                <div className="dropdown-divider" />
-                {activeRole === 'admin' ? (
-                  <>
-                    <button
-                      type="button"
-                      className="dropdown-item"
-                      onClick={() => handleSelectTab('users')}
-                    >
-                      <FiUsers /> Users Management
-                    </button>
-                    <button
-                      type="button"
-                      className="dropdown-item"
-                      onClick={() => handleSelectTab('logs')}
-                    >
-                      <FiActivity /> System Audit Logs
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="dropdown-item"
-                      onClick={() => handleSelectTab('pets')}
-                    >
-                      <MdPets /> Manage Shelter Pets
-                    </button>
-                    <button
-                      type="button"
-                      className="dropdown-item"
-                      onClick={() => handleSelectTab('adoptions')}
-                    >
-                      <FiClipboard /> Review Adoptions
-                    </button>
-                    <button
-                      type="button"
-                      className="dropdown-item"
-                      onClick={() => handleSelectTab('appointments')}
-                    >
-                      <FiCalendar /> View Appointments
-                    </button>
-                  </>
-                )}
                 <div className="dropdown-divider" />
                 <button type="button" className="dropdown-item logout" onClick={onLogout}>
                   <FiLogOut /> Sign Out
@@ -457,16 +402,6 @@ function DashboardPage({ user, onLogout }) {
             )}
           </div>
         </header>
-
-        <div className="dashboard-header-actions">
-          <div className="date-picker">
-            <FiCalendar className="date-icon" />
-            <span>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-          </div>
-          <button className="export-btn" onClick={() => handleSelectTab('reports')}>
-            <FiDownload /> <span>Export Report</span>
-          </button>
-        </div>
 
         <div className="content-area">{renderContent()}</div>
       </main>

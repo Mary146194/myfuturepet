@@ -1134,12 +1134,15 @@ class _ARViewScreenState extends State<ARViewScreen>
                   ),
 
                   // 7. Bottom Shutter / Placement Button
-                  Positioned(
-                    bottom: 16,
-                    left: 0,
-                    right: 0,
-                    child: _buildPlacementShutterButton(),
-                  ),
+                  // In real floor AR the pet is placed by tapping the floor and
+                  // re-placed with the side reset button, so no shutter there.
+                  if (!_useArCore || _is3DStudioMode)
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: _buildPlacementShutterButton(),
+                    ),
                 ],
               ),
             ),

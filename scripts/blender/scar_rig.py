@@ -139,7 +139,7 @@ for f in range(25):
 # Sit: rump down about the shoulders, hind legs fold, tail laid back. Local X turns.
 SIT = {"spine": -43, "thigh": -26, "shin": 103, "foot": -121,
        "tail_0": 45, "tail_1": 30, "tail_2": 20,
-       "toe": 75}  # toe: paw folds flat on the floor instead of standing up
+       "toe": 52}  # toe: paw lies flat (about 8 degrees) instead of pointing down
 # Halfway: rump half down, legs folded just enough to keep the paws on the floor.
 MID = {"spine": -22, "thigh": -18, "shin": 70, "foot": -80, "toe": 35,
        "tail_0": 20, "tail_1": 15, "tail_2": 10}

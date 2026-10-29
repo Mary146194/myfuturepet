@@ -18,8 +18,6 @@ import 'login_screen.dart';
 import 'notifications_screen.dart';
 import '../services/notification_service.dart';
 import 'app_settings_screen.dart';
-import 'notification_settings_screen.dart';
-import 'preferences_screen.dart';
 import 'help_support_screen.dart';
 import '../services/theme_service.dart';
 
@@ -771,34 +769,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => const AppSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          _buildSettingItem(
-            icon: Icons.notifications_none,
-            title: 'Notifications',
-            textCol: textCol,
-            subTextCol: subTextCol,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const NotificationSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          _buildSettingItem(
-            icon: Icons.tune,
-            title: 'Preferences',
-            textCol: textCol,
-            subTextCol: subTextCol,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PreferencesScreen(),
                 ),
               );
             },

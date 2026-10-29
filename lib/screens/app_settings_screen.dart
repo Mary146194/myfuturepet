@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/theme_service.dart';
 
@@ -17,7 +16,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   String _selectedTheme = 'Light Mode';
-  bool _offlineCacheEnabled = true;
   bool _isLoading = false;
 
   @override
@@ -27,10 +25,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
       _selectedTheme = ThemeService().currentThemeName;
-      _offlineCacheEnabled = prefs.getBool('offline_cache_enabled') ?? true;
     });
   }
 
@@ -52,7 +48,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Future<void> _clearCache() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
     // Clear image cache
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
@@ -61,7 +56,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('App cache cleared successfully. 14.8 MB freed.'),
+          content: Text('Cached images cleared.'),
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
@@ -605,48 +600,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     ),
                     child: Column(
                       children: [
-                        SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          secondary: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF14532D).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.cached_rounded,
-                              color: Color(0xFF16A34A),
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            'Image & Data Caching',
-                            style: TextStyle(
-                              color: textCol,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Cache pet photos locally to save mobile data',
-                            style: TextStyle(
-                              color: subTextCol,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          value: _offlineCacheEnabled,
-                          activeThumbColor: tealColor,
-                          onChanged: (val) async {
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.setBool('offline_cache_enabled', val);
-                            setState(() => _offlineCacheEnabled = val);
-                          },
-                        ),
-                        Divider(height: 1, color: borderCol),
                         ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,

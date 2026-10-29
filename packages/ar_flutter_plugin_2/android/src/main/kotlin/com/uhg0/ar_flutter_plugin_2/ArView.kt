@@ -183,7 +183,10 @@ class ArView(
                 config.apply {
                     depthMode = Config.DepthMode.DISABLED
                     instantPlacementMode = Config.InstantPlacementMode.DISABLED
-                    lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
+                    // MyFuturePet: HDR estimation lit the pet from the room's brightest lamp
+                    // (white streaks) and darkened it in shade, and its per-frame cubemap
+                    // costs CPU that floor tracking needs. Ambient keeps the room's tint only.
+                    lightEstimationMode = Config.LightEstimationMode.AMBIENT_INTENSITY
                     focusMode = Config.FocusMode.AUTO
                     planeFindingMode = Config.PlaneFindingMode.DISABLED
                 }
@@ -202,6 +205,63 @@ class ArView(
     }
 
     
+
+    /**
+     * MyFuturePet: the floor point under screen pixel ([x], [y]) and its distance from
+     * the camera. ARCore only hits the patch of floor it has mapped so far, which
+     * grows slowly on plain tiles; past that edge the lowest tracked floor plane is
+     * extended (same height, it is a flat floor) so a tap anywhere on it still lands.
+     */
+    private fun floorHit(frame: Frame, x: Float, y: Float): Pair<Pose, Float>? {
+        frame.hitTest(x, y).firstOrNull { hit ->
+            val plane = hit.trackable as? Plane
+            plane != null &&
+                plane.trackingState == TrackingState.TRACKING &&
+                plane.type == Plane.Type.HORIZONTAL_UPWARD_FACING &&
+                plane.isPoseInPolygon(hit.hitPose)
+        }?.let { return it.hitPose to it.distance }
+
+        val floorY = sceneView.session?.getAllTrackables(Plane::class.java)
+            ?.filter {
+                it.trackingState == TrackingState.TRACKING &&
+                    it.type == Plane.Type.HORIZONTAL_UPWARD_FACING &&
+                    it.subsumedBy == null
+            }
+            ?.minOfOrNull { it.centerPose.ty() } ?: return null
+        val w = sceneView.width.toFloat()
+        val h = sceneView.height.toFloat()
+        if (w <= 0f || h <= 0f) return null
+
+        // Unproject the tap into a world ray (near and far points) and meet the floor.
+        val proj = FloatArray(16)
+        val view = FloatArray(16)
+        val viewProj = FloatArray(16)
+        val inv = FloatArray(16)
+        frame.camera.getProjectionMatrix(proj, 0, 0.05f, 30f)
+        frame.camera.getViewMatrix(view, 0)
+        android.opengl.Matrix.multiplyMM(viewProj, 0, proj, 0, view, 0)
+        if (!android.opengl.Matrix.invertM(inv, 0, viewProj, 0)) return null
+        fun unproject(ndcZ: Float): FloatArray {
+            val p = FloatArray(4)
+            android.opengl.Matrix.multiplyMV(
+                p, 0, inv, 0, floatArrayOf(2f * x / w - 1f, 1f - 2f * y / h, ndcZ, 1f), 0
+            )
+            return floatArrayOf(p[0] / p[3], p[1] / p[3], p[2] / p[3])
+        }
+        val near = unproject(-1f)
+        val far = unproject(1f)
+        val dy = far[1] - near[1]
+        if (dy > -1e-6f) return null // looking at or above the horizon
+        val t = (floorY - near[1]) / dy
+        val px = near[0] + (far[0] - near[0]) * t
+        val pz = near[2] + (far[2] - near[2]) * t
+        val cam = frame.camera.pose
+        val dx = px - cam.tx()
+        val dyCam = floorY - cam.ty()
+        val dz = pz - cam.tz()
+        val distance = kotlin.math.sqrt(dx * dx + dyCam * dyCam + dz * dz)
+        return Pose.makeTranslation(px, floorY, pz) to distance
+    }
 
     private suspend fun buildModelNode(nodeData: Map<String, Any>): ModelNode? {
         var fileLocation = nodeData["uri"] as? String ?: return null
@@ -268,13 +328,7 @@ class ArView(
                     private var lastDragPose: Pose? = null
 
                     private fun floorHitPose(e: MotionEvent): Pose? =
-                        sceneView.frame?.hitTest(e)?.firstOrNull { hit ->
-                            val plane = hit.trackable as? Plane
-                            plane != null &&
-                                plane.trackingState == TrackingState.TRACKING &&
-                                plane.type == Plane.Type.HORIZONTAL_UPWARD_FACING &&
-                                plane.isPoseInPolygon(hit.hitPose)
-                        }?.hitPose
+                        sceneView.frame?.let { floorHit(it, e.x, e.y)?.first }
 
                     override fun onMove(detector: MoveGestureDetector, e: MotionEvent): Boolean {
                         if (!handlePans) return false
@@ -487,18 +541,22 @@ class ArView(
                     pointCloudNodes.toList().forEach { removePointCloudNode(it) }
                 }
 
-                onFrame = { frameTime ->
-                    // MyFuturePet: SceneView 2.2.1 multiplies ARCore's light estimate into
-                    // the same sun node, so it compounds and drifts dark. Re-derive it from
-                    // the original sun each frame, never below half: a shady corner must
-                    // not turn the pet nearly black.
+                // MyFuturePet: use the frame SceneView already fetched. A second
+                // session.update() here stole camera frames, so planes found in
+                // SceneView's frame never showed up in getUpdatedTrackables() below
+                // and "floor found" came late or not at all.
+                onSessionUpdated = { _, frame ->
+                    // SceneView 2.2.1 multiplies ARCore's light estimate into the same
+                    // sun node, so it compounds. Re-derive it from the original sun each
+                    // frame within a narrow band: a shady corner must not turn the pet
+                    // dark, nor a bright lamp wash it out.
                     val sun = mainLightNode
                     val intensity = sunIntensity
                     val color = sunColor
                     lightEstimation?.let { est ->
                         if (sun != null && intensity != null) {
                             sun.intensity = intensity *
-                                (est.mainLightIntensity ?: 1f).coerceAtLeast(0.5f)
+                                (est.mainLightIntensity ?: 1f).coerceIn(0.85f, 1.15f)
                         }
                         if (sun != null && color != null) {
                             est.mainLightColor?.let { sun.color = color * it }
@@ -506,7 +564,7 @@ class ArView(
                     }
                     try {
                         if (!isSessionPaused) {
-                            session?.update()?.let { frame ->
+                            run {
                                 if (showAnimatedGuide) {
                                     frame.getUpdatedTrackables(Plane::class.java).forEach { plane ->
                                         if (plane.trackingState == TrackingState.TRACKING) {
@@ -597,30 +655,24 @@ class ArView(
                             }
                             true
                         } else {
-                            session?.update()?.let { frame ->
-                                val hitResults = frame.hitTest(motionEvent)
-
-                                Log.d("ArView", "Hit Results count: ${hitResults.size}")
-
-                                val planeHits =
-                                    hitResults
-                                        .filter { hit ->
-                                            val trackable = hit.trackable
-                                            trackable is Plane && trackable.trackingState == TrackingState.TRACKING
-                                        }.map { hit ->
-                                            mapOf(
-                                                "type" to 1,
-                                                "distance" to hit.distance.toDouble(),
-                                                "position" to
-                                                    mapOf(
-                                                        "x" to hit.hitPose.tx().toDouble(),
-                                                        "y" to hit.hitPose.ty().toDouble(),
-                                                        "z" to hit.hitPose.tz().toDouble(),
-                                                    ),
-                                            )
-                                        }
-                                notifyPlaneOrPointTap(planeHits)
-                            }
+                            // MyFuturePet: the latest frame, not a new session.update().
+                            val planeHits = this.frame
+                                ?.let { floorHit(it, motionEvent.x, motionEvent.y) }
+                                ?.let { (pose, distance) ->
+                                    listOf(
+                                        mapOf(
+                                            "type" to 1,
+                                            "distance" to distance.toDouble(),
+                                            "position" to
+                                                mapOf(
+                                                    "x" to pose.tx().toDouble(),
+                                                    "y" to pose.ty().toDouble(),
+                                                    "z" to pose.tz().toDouble(),
+                                                ),
+                                        ),
+                                    )
+                                } ?: emptyList()
+                            notifyPlaneOrPointTap(planeHits)
                             true
                         }
                     },
@@ -930,8 +982,8 @@ class ArView(
 
     private fun handleGetCameraPose(result: MethodChannel.Result) {
         try {
-            val frame = sceneView.session?.update()
-            val cameraPose = frame?.camera?.pose
+            // MyFuturePet: the latest frame; update() here stole a camera frame each call.
+            val cameraPose = sceneView.frame?.camera?.pose
             if (cameraPose != null) {
                 val poseData =
                     mapOf(
