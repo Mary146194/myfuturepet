@@ -86,7 +86,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     SharePlus.instance.share(
       ShareParams(
         text:
-            'Meet $petName, a loving $breed looking for a forever home at My Future Pet! Check them out in the app.',
+            '$petName, a $breed, is up for adoption on My Future Pet.',
         subject: 'Meet $petName on My Future Pet',
       ),
     );
@@ -333,10 +333,10 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: tealColor,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.18),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -386,7 +386,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 22),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isDark
                             ? const Color(0xFF334155)
@@ -396,10 +396,10 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(
-                            alpha: isDark ? 0.25 : 0.04,
+                            alpha: isDark ? 0.05 : 0.04,
                           ),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -440,7 +440,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                               0xFF0C4A6E,
                                             ).withValues(alpha: 0.35)
                                           : const Color(0xFFE8F6FC)),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: isFemale
                                       ? (isDark
@@ -605,7 +605,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
                           ? const Color(0xFF334155)
@@ -615,7 +615,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(
-                          alpha: isDark ? 0.20 : 0.03,
+                          alpha: isDark ? 0.05 : 0.03,
                         ),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
@@ -723,7 +723,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
                           ? const Color(0xFF334155)
@@ -733,7 +733,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(
-                          alpha: isDark ? 0.20 : 0.03,
+                          alpha: isDark ? 0.05 : 0.03,
                         ),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
@@ -865,8 +865,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                    blurRadius: 10,
+                    color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.05),
+                    blurRadius: 8,
                     offset: const Offset(0, -3),
                   ),
                 ],
@@ -900,9 +900,10 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                             label: 'Schedule Visit',
                             icon: Icons.calendar_month_outlined,
                             isAR: false,
-                            onTap: () {
-                              _openVisitAppointment(context);
-                            },
+                            // No visits for a pet that is adopted or on hold.
+                            onTap: isAvailable
+                                ? () => _openVisitAppointment(context)
+                                : null,
                           ),
                         ),
                       ],
@@ -931,7 +932,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               : Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: Row(
@@ -989,7 +990,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE6EDF0),
           width: 1,
@@ -1139,7 +1140,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -1206,7 +1207,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
         color: isDark
             ? tealColor.withValues(alpha: 0.18)
             : const Color(0xFFE5F8F6),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? tealColor.withValues(alpha: 0.35)
@@ -1345,7 +1346,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     required String label,
     required IconData icon,
     required bool isAR,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     final bool isDark = ThemeService.isDarkMode(context);
 
@@ -1367,16 +1368,18 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
         ? (isAR ? const Color(0xFFFB923C) : const Color(0xFF2DD4BF))
         : (isAR ? const Color(0xFFEA580C) : const Color(0xFF008F82));
 
-    return Material(
+    return Opacity(
+      opacity: onTap == null ? 0.45 : 1,
+      child: Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           height: 46,
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderColor, width: 1.2),
           ),
           child: Row(
@@ -1400,6 +1403,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

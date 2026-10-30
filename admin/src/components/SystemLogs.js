@@ -82,7 +82,7 @@ function SystemLogs() {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    showToast('Copied JSON payload to clipboard!');
+    showToast('Copied to clipboard.');
   };
 
   const exportAuditLog = () => {
@@ -98,7 +98,7 @@ function SystemLogs() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast('System audit trail downloaded as JSON');
+      showToast('Logs downloaded as JSON.');
     } catch (err) {
       console.error(err);
       showToast('Failed to export audit logs', 'error');
@@ -111,7 +111,7 @@ function SystemLogs() {
     // Category match
     let matchesCategory = true;
     if (categoryFilter === 'auth') {
-      matchesCategory = actionUpper.includes('AUTH') || actionUpper.includes('LOGIN') || actionUpper.includes('ROLE');
+      matchesCategory = log.entity === 'profiles';
     } else if (categoryFilter === 'insert') {
       matchesCategory = actionUpper.includes('INSERT') || actionUpper.includes('CREATE');
     } else if (categoryFilter === 'update') {
@@ -146,7 +146,8 @@ function SystemLogs() {
   };
 
   // Distinct operators count
-  const distinctActors = new Set(logs.map((l) => l.actor?.email).filter(Boolean)).size;
+  // Count by account id: emails are hidden from direct reads since migration 006.
+  const distinctActors = new Set(logs.map((l) => l.actor_id).filter(Boolean)).size;
 
   return (
     <div className="system-logs-container">
@@ -161,13 +162,13 @@ function SystemLogs() {
       <div className="logs-header">
         <div>
           <p className="section-subtitle">
-            Immutable audit record of administrative operations, account modifications, and platform events.
+            Changes recorded by the database: pets, applications, visits, posts, announcements and role changes.
           </p>
         </div>
 
         <div className="logs-header-actions">
           <button onClick={exportAuditLog} className="export-logs-btn" disabled={logs.length === 0}>
-            <FiDownload /> Export Audit (JSON)
+            <FiDownload /> Export JSON
           </button>
           <button onClick={fetchLogs} className="refresh-btn" disabled={loading}>
             <FiRefreshCw className={loading ? 'spin-icon' : ''} /> Refresh Logs
@@ -194,28 +195,21 @@ function SystemLogs() {
         <div className="kpi-item">
           <div className="kpi-icon icon-actors"><FiUser /></div>
           <div>
-            <span className="kpi-label">Active Operators</span>
-            <span className="kpi-value">{distinctActors || 1}</span>
+            <span className="kpi-label">People</span>
+            <span className="kpi-value">{distinctActors}</span>
           </div>
         </div>
 
         <div className="kpi-item">
           <div className="kpi-icon icon-mod"><FiShield /></div>
           <div>
-            <span className="kpi-label">Security &amp; Auth Audits</span>
+            <span className="kpi-label">Role changes</span>
             <span className="kpi-value">
-              {logs.filter((l) => (l.action || '').toUpperCase().includes('AUTH') || (l.action || '').toUpperCase().includes('ROLE')).length}
+              {logs.filter((l) => l.entity === 'profiles').length}
             </span>
           </div>
         </div>
 
-        <div className="kpi-item">
-          <div className="kpi-icon icon-status"><FiCheckCircle /></div>
-          <div>
-            <span className="kpi-label">Integrity Status</span>
-            <span className="kpi-value status-good">Verified</span>
-          </div>
-        </div>
       </div>
 
       {/* Controls: Search & Category Chips */}
@@ -247,7 +241,7 @@ function SystemLogs() {
             className={`cat-chip ${categoryFilter === 'auth' ? 'active' : ''}`}
             onClick={() => setCategoryFilter('auth')}
           >
-            <FiLock /> Security &amp; Auth
+            <FiLock /> Role changes
           </button>
           <button
             className={`cat-chip ${categoryFilter === 'insert' ? 'active' : ''}`}
@@ -276,10 +270,10 @@ function SystemLogs() {
           <thead>
             <tr>
               <th>Timestamp</th>
-              <th>Action Category</th>
-              <th>Target Entity</th>
+              <th>Action</th>
+              <th>Record</th>
               <th>Performed By</th>
-              <th>Payload Details</th>
+              <th>Details</th>
               <th>Inspect</th>
             </tr>
           </thead>
@@ -358,7 +352,7 @@ function SystemLogs() {
               <div className="modal-title-row">
                 <FiShield className="shield-icon" />
                 <div>
-                  <h3>Audit Event Inspection</h3>
+                  <h3>Log entry</h3>
                   <p className="log-id-sub">Event Reference ID: #{inspectModal.log.id}</p>
                 </div>
               </div>
@@ -383,7 +377,7 @@ function SystemLogs() {
                   <strong>{new Date(inspectModal.log.created_at).toLocaleString()}</strong>
                 </div>
                 <div className="meta-box">
-                  <span className="meta-label">Target Entity</span>
+                  <span className="meta-label">Record</span>
                   <strong>{inspectModal.log.entity || 'Platform Record'}</strong>
                 </div>
                 <div className="meta-box">
@@ -395,7 +389,7 @@ function SystemLogs() {
 
               <div className="payload-section">
                 <div className="payload-header">
-                  <span>Structured Payload Data (JSON)</span>
+                  <span>Details (JSON)</span>
                   <button
                     className="copy-payload-btn"
                     onClick={() => copyToClipboard(JSON.stringify(inspectModal.log.details, null, 2))}
@@ -416,7 +410,7 @@ function SystemLogs() {
                 className="close-btn" 
                 onClick={() => setInspectModal({ isOpen: false, log: null })}
               >
-                Close Inspector
+                Close
               </button>
             </div>
           </div>

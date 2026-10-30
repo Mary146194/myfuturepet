@@ -211,7 +211,7 @@ class _AdoptionProcessScreenState
                     decoration: BoxDecoration(
                       color: lightPrimary,
                       borderRadius:
-                          BorderRadius.circular(20),
+                          BorderRadius.circular(16),
                     ),
 
                     child: Text(
@@ -1350,7 +1350,7 @@ class _AdoptionProcessScreenState
         boxShadow: [
           BoxShadow(
             color: Color(0x14000000),
-            blurRadius: 12,
+            blurRadius: 8,
             offset: Offset(0, -3),
           ),
         ],
@@ -1710,7 +1710,7 @@ class _AdoptionProcessScreenState
 
           shape: RoundedRectangleBorder(
             borderRadius:
-                BorderRadius.circular(22),
+                BorderRadius.circular(16),
           ),
 
           contentPadding:
@@ -1746,7 +1746,7 @@ class _AdoptionProcessScreenState
               const SizedBox(height: 18),
 
               const Text(
-                'Application Submitted!',
+                'Application submitted',
                 textAlign:
                     TextAlign.center,
 
@@ -1885,7 +1885,7 @@ class _AdoptionProcessScreenState
   //         backgroundColor: Colors.white,
 
   //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(22),
+  //           borderRadius: BorderRadius.circular(16),
   //         ),
 
   //         contentPadding:
@@ -1920,7 +1920,7 @@ class _AdoptionProcessScreenState
   //             const SizedBox(height: 18),
 
   //             const Text(
-  //               'Application Submitted!',
+  //               'Application submitted',
   //               textAlign: TextAlign.center,
 
   //               style: TextStyle(
@@ -2021,7 +2021,7 @@ class _AdoptionProcessScreenState
   //         shape:
   //             RoundedRectangleBorder(
   //           borderRadius:
-  //               BorderRadius.circular(22),
+  //               BorderRadius.circular(16),
   //         ),
 
   //         contentPadding:
@@ -2057,7 +2057,7 @@ class _AdoptionProcessScreenState
   //             const SizedBox(height: 18),
 
   //             const Text(
-  //               'Application Submitted!',
+  //               'Application submitted',
   //               textAlign: TextAlign.center,
 
   //               style: TextStyle(
@@ -2151,7 +2151,7 @@ class _AdoptionProcessScreenState
           shape:
               RoundedRectangleBorder(
             borderRadius:
-                BorderRadius.circular(20),
+                BorderRadius.circular(16),
           ),
 
           title: const Text(

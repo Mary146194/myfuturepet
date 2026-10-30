@@ -214,7 +214,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE0F2F1),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.view_in_ar,
@@ -453,11 +453,14 @@ class _ARViewScreenState extends State<ARViewScreen>
     await controller?.dispose();
   }
 
-  Future<void> _loadAvailablePets() async {
-    setState(() {
-      _loadingPets = true;
-      _petsError = false;
-    });
+  // quiet: a pull-to-refresh keeps the list on screen instead of a spinner.
+  Future<void> _loadAvailablePets({bool quiet = false}) async {
+    if (!quiet) {
+      setState(() {
+        _loadingPets = true;
+        _petsError = false;
+      });
+    }
     try {
       final pets = await (widget.petService ?? PetService()).fetchPets(
         status: 'available',
@@ -470,6 +473,14 @@ class _ARViewScreenState extends State<ARViewScreen>
       });
     } catch (_) {
       if (!mounted) return;
+      if (quiet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not refresh pets. Please try again.'),
+          ),
+        );
+        return;
+      }
       setState(() {
         _loadingPets = false;
         _petsError = true;
@@ -848,24 +859,29 @@ class _ARViewScreenState extends State<ARViewScreen>
           ? const Center(
               child: Text('No adoptable pets are available right now.'),
             )
-          : ListView.builder(
-              itemCount: _availablePets.length,
-              itemBuilder: (context, index) {
-                final pet = _availablePets[index];
-                final hasModel = resolvePetModelUrl(pet['model_url']) != null;
-                return ListTile(
-                  key: ValueKey('ar-pet-${pet['id']}'),
-                  leading: const Icon(Icons.pets),
-                  title: Text(pet['name']?.toString() ?? 'Unnamed pet'),
-                  subtitle: Text(
-                    hasModel
-                        ? 'View interactive 3D model'
-                        : '3D model unavailable',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => setState(() => _selectedPet = pet),
-                );
-              },
+          : RefreshIndicator(
+              color: primaryColor,
+              onRefresh: () => _loadAvailablePets(quiet: true),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _availablePets.length,
+                itemBuilder: (context, index) {
+                  final pet = _availablePets[index];
+                  final hasModel = resolvePetModelUrl(pet['model_url']) != null;
+                  return ListTile(
+                    key: ValueKey('ar-pet-${pet['id']}'),
+                    leading: const Icon(Icons.pets),
+                    title: Text(pet['name']?.toString() ?? 'Unnamed pet'),
+                    subtitle: Text(
+                      hasModel
+                          ? 'View interactive 3D model'
+                          : '3D model unavailable',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => setState(() => _selectedPet = pet),
+                  );
+                },
+              ),
             ),
     );
   }
@@ -1040,7 +1056,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                           ),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: const Color(0xFF00E5D0),
                               width: 1.2,
@@ -1248,9 +1264,9 @@ class _ARViewScreenState extends State<ARViewScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: aimColor.withValues(alpha: 0.3),
-                  blurRadius: 16,
-                  spreadRadius: 2,
+                  color: aimColor.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  spreadRadius: 0,
                 ),
               ],
             ),
@@ -1411,10 +1427,10 @@ class _ARViewScreenState extends State<ARViewScreen>
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFF008F82),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -1452,12 +1468,12 @@ class _ARViewScreenState extends State<ARViewScreen>
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -1485,7 +1501,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: blur,
             spreadRadius: blur / 8,
             offset: Offset(0, blur / 6),
@@ -1513,7 +1529,7 @@ class _ARViewScreenState extends State<ARViewScreen>
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -1579,7 +1595,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1674,13 +1690,13 @@ class _ARViewScreenState extends State<ARViewScreen>
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isReady ? const Color(0xFF00E5D0) : const Color(0xFFFFA65C),
           width: 1.2,
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 8),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8),
         ],
       ),
       child: Row(
@@ -1740,7 +1756,7 @@ class _ARViewScreenState extends State<ARViewScreen>
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24, width: 0.8),
       ),
       child: FittedBox(
@@ -1784,7 +1800,7 @@ class _ARViewScreenState extends State<ARViewScreen>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         'Viewing scale: ${(_scale * 100).round()}% • Estimated shoulder height: '
@@ -1858,7 +1874,7 @@ class _ARViewScreenState extends State<ARViewScreen>
               name: 'my_future_pet_ar.jpg',
             ),
           ],
-          text: 'Meet $_petName in my room, with My Future Pet!',
+          text: '$_petName in my room, seen with My Future Pet.',
         ),
       );
       return;
@@ -2068,10 +2084,10 @@ class _ARViewScreenState extends State<ARViewScreen>
           color: isSelected
               ? primaryColor
               : Colors.white.withValues(alpha: 0.90),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.16),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -2108,9 +2124,9 @@ class _ARViewScreenState extends State<ARViewScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.20),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -2217,9 +2233,9 @@ class _ARViewScreenState extends State<ARViewScreen>
             border: Border.all(color: Colors.white, width: 4),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
-                offset: const Offset(0, 3),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -2259,7 +2275,7 @@ class _ARViewScreenState extends State<ARViewScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -2281,7 +2297,7 @@ class _ARViewScreenState extends State<ARViewScreen>
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           title: const Row(
             children: [
@@ -2327,7 +2343,7 @@ class _ARViewScreenState extends State<ARViewScreen>
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text(
-                'Got it!',
+                'Got it',
                 style: TextStyle(
                   color: primaryColor,
                   fontWeight: FontWeight.bold,

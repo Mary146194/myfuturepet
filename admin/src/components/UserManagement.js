@@ -170,7 +170,7 @@ function UserManagement() {
   return (
     <div className="user-management">
       <p className="section-subtitle">
-        Manage registered adopter profiles, assign administrative roles, and maintain accounts.
+        Accounts and their roles.
       </p>
 
       {toastMessage && (

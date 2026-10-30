@@ -316,8 +316,8 @@ function DashboardPage({ user, onLogout }) {
                 <h1>Shelter overview</h1>
                 <p>
                   {activeRole === 'shelter_staff'
-                    ? 'Rescue operations & shelter management for Jagna Animal Lover and Rescue Group.'
-                    : "Your shelter at a glance. Every record, every next step."}
+                    ? 'Jagna Animal Lover and Rescue Group'
+                    : "Jagna Animal Lover and Rescue Group"}
                 </p>
               </>
             ) : (

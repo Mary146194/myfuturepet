@@ -18,11 +18,11 @@
 .dashboard-container .greeting h1{font-size:28px;font-weight:650;letter-spacing:-.9px;color:#29231f}
 .dashboard-container .greeting p{color:var(--admin-muted);font-size:12px;line-height:1.6;white-space:normal}
 .dashboard-container .collapse-toggle{background:#fff;border:1px solid var(--admin-border);box-shadow:none;border-radius:7px;color:#766354}
-.dashboard-container .avatar{background:var(--admin-accent);border-radius:10px;box-shadow:none}
+.dashboard-container .avatar{background:var(--admin-accent);border-radius:8px;box-shadow:none}
 .dashboard-container .role-switch-pill-btn{background:#fff;border:1px solid var(--admin-border);color:#67564a;box-shadow:none;border-radius:5px}
 .dashboard-container .header-actions{margin:22px 0}
 .dashboard-container :is(h2,h3) {color:#302820;letter-spacing:-.45px}
-.dashboard-container :is(.stat-card,.visual-card,.pet-card,.appt-card,.post-feed-card,.composer-card,.announcement-card-item,.appt-kpi-card,.logs-table-card) {background:#fff;border:1px solid var(--admin-border);border-radius:10px;box-shadow:none}
+.dashboard-container :is(.stat-card,.visual-card,.pet-card,.appt-card,.post-feed-card,.composer-card,.announcement-card-item,.appt-kpi-card,.logs-table-card) {background:#fff;border:1px solid var(--admin-border);border-radius:8px;box-shadow:none}
 .dashboard-container :is(.visual-card,.composer-card) {padding:24px}
 .dashboard-container :is(.stat-card,.pet-card,.appt-card,.post-feed-card):hover{transform:none;box-shadow:0 4px 16px #49301b08;border-color:#d8c4b2}
 .dashboard-container .stat-card{padding:24px 20px;flex-direction:column;gap:16px;position:relative;overflow:hidden;border-top:3px solid #dc7b4c}
@@ -31,7 +31,7 @@
 .dashboard-container :is(.card-top) h3 {font-size:18px;font-weight:650}
 .dashboard-container :is(.card-top) p {color:var(--admin-muted);font-size:12px}
 .dashboard-container :is(.pet-controls-bar,.appt-controls-bar,.controls,.posts-summary-ribbon) {background:#fff;border:1px solid var(--admin-border);border-radius:8px;box-shadow:none;padding:16px}
-.adoptions-table-container,.users-table-container {border:1px solid var(--admin-border);border-radius:10px;box-shadow:none;background:#fff;overflow-x:auto}
+.adoptions-table-container,.users-table-container {border:1px solid var(--admin-border);border-radius:8px;box-shadow:none;background:#fff;overflow-x:auto}
 .dashboard-container table{border-collapse:collapse;font-size:13px}
 .dashboard-container table thead{background:#faf7f3}
 .dashboard-container table th{background:#faf7f3;color:#77695e;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:650;padding:16px;border-bottom:1px solid var(--admin-border)}
@@ -39,15 +39,15 @@
 .dashboard-container table tbody tr:hover{background:#fffbf7}
 .dashboard-container :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea) {border-color:#dcd3ca;border-radius:6px;box-shadow:none;color:#40362e;font-size:14px}
 .dashboard-container :is(.btn-save-pet,.create-post-header-btn,.send-btn,.role-confirm-btn){background:var(--admin-accent);box-shadow:none;border-radius:7px;color:white}
-.dashboard-container :is(.pet-modal-card,.user-modal-card,.adoption-dossier-card,.create-post-modal-card,.inspect-modal-card,.delete-confirm-card) {border-radius:12px;border:1px solid var(--admin-border);box-shadow:0 24px 80px #39261926}
+.dashboard-container :is(.pet-modal-card,.user-modal-card,.adoption-dossier-card,.create-post-modal-card,.inspect-modal-card,.delete-confirm-card) {border-radius:8px;border:1px solid var(--admin-border);box-shadow:0 24px 80px #39261926}
 .dashboard-container :is(.modal-header,.dossier-header,.create-modal-header) {background:#fff8f2;border-bottom:1px solid var(--admin-border)}
-.dashboard-container :is(.empty-state,.no-posts-card,.loading-state-box){background:#fff;color:#75695f;border:1px dashed #ddd0c3;border-radius:10px;padding:48px 24px}
-.dashboard-container .pet-card-image-wrap{border-radius:9px 9px 0 0}
+.dashboard-container :is(.empty-state,.no-posts-card,.loading-state-box){background:#fff;color:#75695f;border:1px dashed #ddd0c3;border-radius:8px;padding:48px 24px}
+.dashboard-container .pet-card-image-wrap{border-radius:8px 8px 0 0}
 .dashboard-container .pet-card-body{padding:22px}
 .dashboard-container .pet-name{font-size:20px;letter-spacing:-.5px}
 .dashboard-container .pet-card-actions{border-top:1px solid var(--admin-border);padding-top:18px}
 .dashboard-container .post-card-header{padding:20px}
-.dashboard-container .author-avatar{border-radius:9px}
+.dashboard-container .author-avatar{border-radius:8px}
 .dashboard-container .announcement-title{font-size:18px}
 .dashboard-container :is(button,a,input,select,textarea):focus-visible {outline:3px solid #d88b58;outline-offset:3px}
 .dashboard-container button:disabled{cursor:not-allowed;opacity:.55}

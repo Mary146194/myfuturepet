@@ -20,6 +20,7 @@ import '../services/notification_service.dart';
 import 'app_settings_screen.dart';
 import 'help_support_screen.dart';
 import '../services/theme_service.dart';
+import '../widgets/app_brand_title.dart';
 
 // ============================================================
 // PROFILE SCREEN
@@ -27,10 +28,12 @@ import '../services/theme_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBrowsePets;
+  final VoidCallback? onLogoTap;
 
   const ProfileScreen({
     super.key,
     this.onBrowsePets,
+    this.onLogoTap,
   });
 
   @override
@@ -211,46 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               child: Row(
                 children: [
-                  ClipOval(
-                    child: (profileImage.isNotEmpty)
-                        ? Image.network(
-                            profileImage,
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 32,
-                                height: 32,
-                                color: isDark ? const Color(0xFF0F172A) : lightBlue,
-                                alignment: Alignment.center,
-                                child: Text(
-                                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                                  style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14),
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            width: 32,
-                            height: 32,
-                            color: isDark ? const Color(0xFF0F172A) : lightBlue,
-                            alignment: Alignment.center,
-                            child: Text(
-                              userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14),
-                            ),
-                          ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Profile',
-                    style: TextStyle(
-                      color: primaryColor,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  AppBrandTitle(onTap: widget.onLogoTap),
                   const Spacer(),
                   ValueListenableBuilder<int>(
                     valueListenable: NotificationService().unreadCountNotifier,
@@ -341,9 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         title: 'My Applications',
                         count: AdoptionApplicationStore.applicationCount,
                         countLabel: 'application',
-                        status: AdoptionApplicationStore.hasApplication
-                            ? 'Under Review'
-                            : null,
+                        status: AdoptionApplicationStore.latestStatus,
                         isDark: isDark,
                         activityCardBg: activityCardBg,
                         borderCol: borderCol,
@@ -483,7 +445,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         border: Border.all(color: borderCol),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.025),
+            color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.025),
             blurRadius: 7,
             offset: const Offset(0, 2),
           ),
@@ -502,9 +464,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.13),
-                  blurRadius: 9,
-                  offset: const Offset(0, 3),
+                  color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -581,7 +543,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 1.2,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
@@ -645,7 +607,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: activityCardBg,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: isDark ? Border.all(color: borderCol) : null,
         ),
         child: Row(
@@ -690,7 +652,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: iconColor,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         '$count $countLabel${count == 1 ? '' : 's'}',
@@ -712,7 +674,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: isDark
                             ? const Color(0xFF008F82).withValues(alpha: 0.2)
                             : const Color(0xFFD9F2F0),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         status,
@@ -751,7 +713,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         border: Border.all(color: borderCol),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
             blurRadius: 5,
             offset: const Offset(0, 1),
           ),
@@ -862,7 +824,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return AlertDialog(
               backgroundColor: dialogBg,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
               ),
               title: Text(
                 'Edit Profile',
@@ -1057,7 +1019,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
                             messenger.showSnackBar(
                               const SnackBar(
-                                content: Text('Profile updated successfully! 🐾'),
+                                content: Text('Profile updated.'),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
@@ -1079,7 +1041,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: isSaving
@@ -1117,7 +1079,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return AlertDialog(
           backgroundColor: dialogBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
             'Logout',
@@ -1152,7 +1114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: const Text('Logout', style: TextStyle(fontSize: 13)),

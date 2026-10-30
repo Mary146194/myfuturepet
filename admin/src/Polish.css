@@ -36,10 +36,31 @@ body,
 }
 @media (hover: hover) {
   .dashboard-container :is(.stat-card, .visual-card, .pet-card):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px -14px rgba(64, 38, 20, .28);
+    transform: none;
+    border-color: #d6cfc8;
   }
 }
+
+/* Interaction states, one rule set for every control in the workspace.
+   Hover darkens a step, press settles, disabled stays flat and quiet. */
+.dashboard-container :is(button, .btn, [role="button"]) {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, filter .15s ease, transform .1s ease;
+}
+@media (hover: hover) {
+  .dashboard-container :is(button, .btn, [role="button"]):hover:not(:disabled) { filter: brightness(.95); }
+  .dashboard-container :is(input, select, textarea):hover:not(:disabled):not(:focus) { border-color: #b9b0a8; }
+}
+.dashboard-container :is(button, .btn, [role="button"]):active:not(:disabled) { filter: brightness(.9); }
+.dashboard-container :is(button, .btn):disabled,
+.dashboard-container :is(input, select, textarea):disabled {
+  filter: none; transform: none; box-shadow: none; cursor: not-allowed; opacity: .5;
+}
+.dashboard-container :is(input, select, textarea):focus { border-color: #b64724; }
+
+/* Headings carry the weight; body copy stays a step lighter and easier to read. */
+.dashboard-container :is(h1, h2) { letter-spacing: -0.02em; color: #1f1a17; }
+.dashboard-container h3 { letter-spacing: -0.01em; color: #1f1a17; }
+.dashboard-container p { color: #57504a; letter-spacing: 0.005em; }
 .dashboard-container .menu-item { transition: background-color .2s ease, color .2s ease, transform .2s var(--mfp-ease); }
 .dashboard-container .menu-item:active { transform: scale(.98); }
 .dashboard-container :is(button, a, input, select, textarea):focus-visible { outline: 2px solid #b64724; outline-offset: 2px; }

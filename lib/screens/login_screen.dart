@@ -254,14 +254,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius:
-                            BorderRadius.circular(22),
+                            BorderRadius.circular(16),
 
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(
-                              alpha: 0.06,
+                              alpha: 0.05,
                             ),
-                            blurRadius: 20,
+                            blurRadius: 8,
                             offset: const Offset(
                               0,
                               8,
@@ -313,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 8),
 
                           const Text(
-                            'Sign in to continue your adoption journey.',
+                            'Sign in to your account.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
@@ -571,7 +571,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 1,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(22),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
                               child: Row(
@@ -793,7 +793,7 @@ class _LoginScreenState extends State<LoginScreen> {
 //         ScaffoldMessenger.of(context).showSnackBar(
 //           const SnackBar(
 //             content: Text(
-//               'Login successful!',
+//               'Signed in.',
 //             ),
 //             backgroundColor: Colors.green,
 //           ),
@@ -983,8 +983,8 @@ class _LoginScreenState extends State<LoginScreen> {
 //                 boxShadow: [
 //                   BoxShadow(
 //                     color: Colors.black.withOpacity(0.05),
-//                     blurRadius: 15,
-//                     offset: const Offset(0, 5),
+//                     blurRadius: 8,
+//                     offset: const Offset(0, 2),
 //                   ),
 //                 ],
 //               ),
@@ -1036,7 +1036,7 @@ class _LoginScreenState extends State<LoginScreen> {
 //                   const SizedBox(height: 12),
 
 //                   const Text(
-//                     'Sign in to continue your adoption journey.',
+//                     'Sign in to your account.',
 
 //                     textAlign: TextAlign.center,
 
@@ -1588,8 +1588,8 @@ class _LoginScreenState extends State<LoginScreen> {
 //                 boxShadow: [
 //                   BoxShadow(
 //                     color: Colors.black.withOpacity(0.05),
-//                     blurRadius: 25,
-//                     offset: const Offset(0, 10),
+//                     blurRadius: 8,
+//                     offset: const Offset(0, 2),
 //                   ),
 //                 ],
 //               ),
@@ -1626,7 +1626,7 @@ class _LoginScreenState extends State<LoginScreen> {
 //                   const SizedBox(height: 8),
 
 //                   const Text(
-//                     'Sign in to continue your adoption journey.',
+//                     'Sign in to your account.',
 //                     textAlign: TextAlign.center,
 
 //                     style: TextStyle(

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notifications_screen.dart';
 import '../services/community_service.dart';
+import '../widgets/app_brand_title.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
 
 class FeedScreen extends StatefulWidget {
   final CommunityService? communityService;
   final ValueNotifier<int>? unreadCount;
-  const FeedScreen({super.key, this.communityService, this.unreadCount});
+  final VoidCallback? onLogoTap;
+  const FeedScreen({super.key, this.communityService, this.unreadCount, this.onLogoTap});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -38,58 +41,54 @@ class _FeedScreenState extends State<FeedScreen> {
   final Map<String, int> _likeCounts = {};
   final Map<String, int> _commentCounts = {};
 
-  String _currentUserName = 'User';
-  String _currentUserImage = '';
-
   @override
   void initState() {
     super.initState();
     _communityService = widget.communityService ?? CommunityService();
-    _loadCurrentUser();
     _loadPosts();
+    if (widget.communityService == null) _listenForPostChanges();
   }
 
-  // ============================================================
-  // LOAD USER
-  // ============================================================
-  Future<void> _loadCurrentUser() async {
+  RealtimeChannel? _postsChannel;
+
+  // New and removed posts (including staff moderation) appear without a
+  // manual refresh. Updates are skipped: every like changes like_count.
+  void _listenForPostChanges() {
     try {
-      final user = _communityService.currentUser;
-      if (user == null) return;
-
-      String name = user.userMetadata?['full_name']?.toString().trim() ?? '';
-      String avatar = user.userMetadata?['avatar_url']?.toString().trim() ?? '';
-
-      if (name.isEmpty) {
-        name = 'Community member';
+      void reload(PostgresChangePayload _) {
+        if (mounted) _loadPosts(quiet: true);
       }
 
-      try {
-        final profile = await _communityService.fetchMyPublicProfile();
-
-        if (profile != null) {
-          final dbName = profile['full_name']?.toString().trim() ?? '';
-          if (dbName.isNotEmpty) name = dbName;
-          final dbAvatar = profile['avatar_url']?.toString().trim() ?? '';
-          if (dbAvatar.isNotEmpty) avatar = dbAvatar;
-        }
-      } catch (_) {}
-
-      if (mounted) {
-        setState(() {
-          _currentUserName = name;
-          _currentUserImage = avatar;
-        });
-      }
+      _postsChannel = Supabase.instance.client
+          .channel('public:community_posts:feed')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'community_posts',
+            callback: reload,
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.delete,
+            schema: 'public',
+            table: 'community_posts',
+            callback: reload,
+          )
+          .subscribe();
     } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _postsChannel?.unsubscribe();
+    super.dispose();
   }
 
   // ============================================================
   // LOAD POSTS FROM SUPABASE
   // ============================================================
-  Future<void> _loadPosts() async {
+  Future<void> _loadPosts({bool quiet = false}) async {
     final version = ++_loadVersion;
-    setState(() { _loadingPosts = true; _postsFailed = false; });
+    if (!quiet) setState(() { _loadingPosts = true; _postsFailed = false; });
     try {
       final fetched = await _communityService.fetchPosts(throwOnError: true);
 
@@ -170,7 +169,7 @@ class _FeedScreenState extends State<FeedScreen> {
       ShareParams(
         text:
             '$author shared on My Future Pet:\n\n$content\n\n'
-            'Download My Future Pet to adopt and support rescue pets!',
+            'Shared from My Future Pet.',
         subject: 'My Future Pet Story',
       ),
     );
@@ -222,7 +221,7 @@ class _FeedScreenState extends State<FeedScreen> {
               padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -272,7 +271,8 @@ class _FeedScreenState extends State<FeedScreen> {
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
-                      children: ['Success Stories', 'Announcements', 'Tips'].map((cat) {
+                      // Announcements come from the shelter via the admin panel.
+                      children: ['Success Stories', 'Tips'].map((cat) {
                         final selected = postCategory == cat;
                         return ChoiceChip(
                           label: Text(cat),
@@ -301,15 +301,15 @@ class _FeedScreenState extends State<FeedScreen> {
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: primaryColor, width: 1.5),
                         ),
                       ),
@@ -325,15 +325,15 @@ class _FeedScreenState extends State<FeedScreen> {
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: primaryColor, width: 1.5),
                         ),
                       ),
@@ -345,7 +345,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
                         onPressed: submitting
@@ -373,7 +373,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                   if (!mounted) return;
                                   _loadPosts();
                                   messenger.showSnackBar(
-                                    const SnackBar(content: Text('Post published to Community Feed!')),
+                                    const SnackBar(content: Text('Post published.')),
                                   );
                                 } catch (err) {
                                   if (!ctx.mounted) return;
@@ -486,42 +486,7 @@ class _FeedScreenState extends State<FeedScreen> {
       padding: const EdgeInsets.fromLTRB(18, 12, 16, 12),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF0F172A) : Colors.white,
-              border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFD9E4E7),
-                width: 1,
-              ),
-            ),
-            child: ClipOval(
-              child: _currentUserImage.isNotEmpty
-                  ? Image.network(
-                      _currentUserImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets_rounded, color: primaryColor, size: 24),
-                    )
-                  : Center(
-                      child: Text(
-                        _currentUserName.isNotEmpty ? _currentUserName[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 18),
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'Community',
-            style: TextStyle(
-              color: isDark ? const Color(0xFFF8FAFC) : primaryColor,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.4,
-            ),
-          ),
+          AppBrandTitle(onTap: widget.onLogoTap),
           const Spacer(),
           ValueListenableBuilder<int>(
             valueListenable: widget.unreadCount ?? NotificationService().unreadCountNotifier,
@@ -607,7 +572,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     color: isSelected
                         ? primaryColor
                         : (isDark ? const Color(0xFF0F172A) : Colors.white),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
                           ? primaryColor
@@ -724,16 +689,16 @@ class _FeedScreenState extends State<FeedScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFCFE8F0),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -909,12 +874,12 @@ class _FeedScreenState extends State<FeedScreen> {
         height: 54,
         decoration: BoxDecoration(
           color: primaryColor,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.22),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -1031,7 +996,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       padding: EdgeInsets.only(bottom: bottomInset),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Column(
         children: [
@@ -1080,7 +1045,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 : _comments.isEmpty
                     ? Center(
                         child: Text(
-                          'No comments yet. Start the conversation!',
+                          'No comments yet.',
                           style: TextStyle(
                             color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade500,
                             fontSize: 13,
@@ -1178,7 +1143,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                       filled: true,
                       fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
                       ),
                     ),

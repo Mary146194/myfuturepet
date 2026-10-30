@@ -203,7 +203,7 @@ class _MyAppointmentsScreenState
                   elevation: 0,
 
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -240,7 +240,7 @@ class _MyAppointmentsScreenState
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Visiting hours: Monday to Saturday, 9:00 AM – 4:00 PM.\nAppointments allow shelter caretakers to prepare your companion for a safe and personalized interaction.',
+                    'Visiting hours: Monday to Saturday, 9:00 AM – 4:00 PM.',
                     style: TextStyle(
                       color: Color(0xFF2E7D32),
                       fontSize: 12,
@@ -396,7 +396,7 @@ class _MyAppointmentsScreenState
       decoration: BoxDecoration(
         color: Colors.white,
 
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
 
         border: Border.all(
           color: const Color(0xFFD7E3E7),
@@ -406,7 +406,7 @@ class _MyAppointmentsScreenState
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -713,7 +713,7 @@ class _MyAppointmentsScreenState
                 ),
 
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
@@ -987,7 +987,7 @@ class _MyAppointmentsScreenState
                         shape:
                             RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(26),
+                              BorderRadius.circular(16),
                         ),
                       ),
 
@@ -1031,7 +1031,7 @@ class _MyAppointmentsScreenState
       decoration: BoxDecoration(
         color: Colors.white,
 
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
 
         border: Border.all(
           color: const Color(0xFFD7E3E7),

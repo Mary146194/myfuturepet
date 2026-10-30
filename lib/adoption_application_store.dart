@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'services/adoption_service.dart';
+import 'services/pet_service.dart';
 
 class AdoptionApplicationStore {
   // ============================================================
@@ -24,16 +25,14 @@ class AdoptionApplicationStore {
               'id': petRaw?['id']?.toString() ?? '',
               'name': petRaw?['name']?.toString() ?? 'Pet',
               'breed': petRaw?['breed']?.toString() ?? '',
-              'age': 'Young',
+              'age':
+                  PetService.ageFromBirthdate(petRaw?['birthdate']) ??
+                  'Age unknown',
               'gender': petRaw?['gender']?.toString() ?? '',
               'image': petRaw?['image_url']?.toString() ?? '',
               'status': petRaw?['status']?.toString() ?? 'Available',
             },
-            'status':
-                (raw['status'] ?? 'pending').toString().toLowerCase() ==
-                    'pending'
-                ? 'Under Review'
-                : (raw['status'] ?? 'Under Review'),
+            'status': statusLabel(raw['status']),
             'fullName': raw['full_name']?.toString() ?? '',
             'phone': raw['contact_number']?.toString() ?? '',
             'email': '',
@@ -56,6 +55,34 @@ class AdoptionApplicationStore {
 
   static bool get hasApplication {
     return applications.isNotEmpty;
+  }
+
+  /// The same words the admin uses for each database status.
+  static String statusLabel(dynamic status) {
+    switch (status?.toString().toLowerCase()) {
+      case 'under_review':
+        return 'Under Review';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      case 'withdrawn':
+        return 'Withdrawn';
+      default:
+        return 'Pending';
+    }
+  }
+
+  /// Status of the most recent application, for the Profile summary.
+  static String? get latestStatus {
+    if (applications.isEmpty) return null;
+    final sorted = [...applications]
+      ..sort(
+        (a, b) => (b['submittedAt'] ?? '').toString().compareTo(
+          (a['submittedAt'] ?? '').toString(),
+        ),
+      );
+    return sorted.first['status']?.toString();
   }
 
   // ============================================================
@@ -106,7 +133,7 @@ class AdoptionApplicationStore {
   }) async {
     final Map<String, dynamic> newApplication = {
       'pet': Map<String, dynamic>.from(pet),
-      'status': 'Under Review',
+      'status': 'Pending',
       'fullName': fullName,
       'phone': phone,
       'email': email,

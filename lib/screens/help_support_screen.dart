@@ -17,17 +17,17 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     {
       'question': 'How does the adoption process work?',
       'answer':
-          '1. Find an adoptable pet you love on the Home or Pets tab.\n2. Tap "Adopt Me" to fill in the adoption questionnaire.\n3. Shelter staff review your application and schedule an interview.\n4. Complete the adoption agreement and welcome your new best friend home!',
+          '1. Find an adoptable pet you love on the Home or Pets tab.\n2. Tap "Adopt Me" to fill in the adoption questionnaire.\n3. Shelter staff review your application and schedule an interview.\n4. Complete the adoption agreement and take your new pet home.',
     },
     {
       'question': 'Is pet adoption really 100% free?',
       'answer':
-          'Yes! Adoption fees are waived in partnership with Jagna Animal Lover and Rescue Group to encourage loving homes for rescue animals. Adopters only commit to providing lifelong food, healthcare, and safe shelter.',
+          'Adoption fees are waived in partnership with Jagna Animal Lover and Rescue Group to encourage loving homes for rescue animals. Adopters only commit to providing lifelong food, healthcare, and safe shelter.',
     },
     {
       'question': 'Can I visit and meet the pet in person first?',
       'answer':
-          'Absolutely! Tap "Schedule Visit" on any pet details page to pick an appointment date and time at the shelter. This gives you and your family time to interact with the pet before applying.',
+          'Yes. Tap "Schedule Visit" on any pet details page to pick an appointment date and time at the shelter. This gives you and your family time to interact with the pet before applying.',
     },
     {
       'question': 'What requirements or documents are needed?',
@@ -127,11 +127,11 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: cardBg,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: borderCol),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.03),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -217,11 +217,11 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             Container(
               decoration: BoxDecoration(
                 color: cardBg,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: borderCol),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),

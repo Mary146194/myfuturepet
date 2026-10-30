@@ -13,8 +13,6 @@ import {
   FiGlobe,
   FiHome,
   FiUser,
-  FiWifi,
-  FiBattery,
   FiBox,
   FiUsers,
   FiChevronRight
@@ -82,23 +80,23 @@ function Notifications() {
 
   const applyPreset = (presetType) => {
     if (presetType === 'event') {
-      setTitle('Weekend Pet Adoption Day at Jagna!');
-      setMessage('Join us this Saturday at the Jagna municipal grounds! Meet adoptable dogs and cats in person and explore our AR visualization booths.');
+      setTitle('Adoption day on [date]');
+      setMessage('Meet our adoptable dogs and cats at [place] on [date], [time].');
       setRecipientType('all');
     } else if (presetType === 'urgency') {
-      setTitle('Urgent Need: Foster Homes for Rescued Puppies');
-      setMessage('Our rescue shelter just took in a litter of 5 abandoned puppies. If you can provide a safe temporary foster space, please submit a screening application.');
+      setTitle('Foster homes needed');
+      setMessage('We need temporary foster homes for [number] [dogs/cats]. Message the shelter on Messenger if you can help.');
       setRecipientType('adopters');
     } else if (presetType === 'feature') {
-      setTitle('New AR Core 3D Pet Viewing Feature Released');
-      setMessage('Update your My Future Pet mobile app to the latest build to experience real-time 3D pet scaling and spatial placement in your room!');
+      setTitle('App update available');
+      setMessage('Version [x] of My Future Pet is out. [What changed].');
       setRecipientType('all');
     } else if (presetType === 'staff') {
-      setTitle('Shelter Protocol: Weekly Health Checkup Schedule');
-      setMessage('Reminder to shelter caretakers: Please log all vaccination dates and temperament reports in the admin portal prior to Friday afternoon.');
+      setTitle('Staff reminder');
+      setMessage('[Reminder for shelter staff].');
       setRecipientType('staff');
     }
-    showToast('Template preset applied to editor');
+    showToast('Template added. Replace the bracketed parts.');
   };
 
   const handleSendNotification = async (e) => {
@@ -137,7 +135,7 @@ function Notifications() {
         return;
       }
 
-      showToast('Announcement broadcasted to mobile users successfully!');
+      showToast('Announcement sent.');
       setTitle('');
       setMessage('');
       setRecipientType('all');
@@ -212,7 +210,7 @@ function Notifications() {
       <div className="notifications-header-area">
         <div>
           <p className="section-subtitle">
-            Publish official updates, rescue notices, and adoption reminders to mobile app adopters and shelter staff.
+            Announcements appear in the app's notifications.
           </p>
         </div>
       </div>
@@ -223,22 +221,22 @@ function Notifications() {
         <div className="composer-column">
           <div className="composer-card">
             <div className="composer-header">
-              <h3><FiBell /> Compose New Broadcast</h3>
-              <p>Craft your alert below. Use presets for quick drafting.</p>
+              <h3><FiBell /> New announcement</h3>
+              <p>Templates fill in a draft; replace the bracketed parts before sending.</p>
             </div>
 
             {/* Presets Bar */}
             <div className="presets-bar">
-              <span className="presets-label"><FiZap /> Quick Templates:</span>
+              <span className="presets-label"><FiZap /> Templates:</span>
               <div className="presets-chips">
                 <button type="button" className="preset-chip" onClick={() => applyPreset('event')}>
                   <FiCalendar /> Adoption Event
                 </button>
                 <button type="button" className="preset-chip" onClick={() => applyPreset('urgency')}>
-                  <FiAlertTriangle /> Urgent Foster
+                  <FiAlertTriangle /> Foster call
                 </button>
                 <button type="button" className="preset-chip" onClick={() => applyPreset('feature')}>
-                  <FiBox /> AR Feature
+                  <FiBox /> App update
                 </button>
                 <button type="button" className="preset-chip" onClick={() => applyPreset('staff')}>
                   <FiUsers /> Shelter Staff
@@ -303,7 +301,7 @@ function Notifications() {
 
               <div className="form-actions">
                 <button type="submit" disabled={loading} className="send-btn">
-                  <FiSend /> {loading ? 'Broadcasting...' : 'Broadcast to Mobile Users'}
+                  <FiSend /> {loading ? 'Sending…' : 'Send announcement'}
                 </button>
               </div>
             </form>
@@ -314,20 +312,11 @@ function Notifications() {
         <div className="preview-column">
           <div className="phone-mockup-wrapper">
             <div className="preview-label-tag">
-              <FiSmartphone /> Live Mobile App Preview (Android 9.0+)
+              <FiSmartphone /> Preview
             </div>
 
             {/* Android Device Mockup */}
             <div className="phone-frame">
-              {/* Phone Status Bar */}
-              <div className="phone-status-bar">
-                <span>9:41 AM</span>
-                <div className="phone-status-icons">
-                  <FiWifi />
-                  <FiBattery />
-                </div>
-              </div>
-
               {/* Phone App Bar */}
               <div className="phone-app-bar">
                 <div className="app-brand">
@@ -360,38 +349,23 @@ function Notifications() {
                   </div>
 
                   <div className="notif-audience-badge">
-                    {recipientType === 'all' && <><FiGlobe /> Public Broadcast</>}
+                    {recipientType === 'all' && <><FiGlobe /> Everyone</>}
                     {recipientType === 'adopters' && <><MdPets /> For Adopters</>}
                     {recipientType === 'staff' && <><FiHome /> Shelter Staff Only</>}
                   </div>
 
                   <h5 className="notif-title">
-                    {title.trim() || 'Announcement Title Appears Here...'}
+                    {title.trim() || 'Title'}
                   </h5>
 
                   <p className="notif-body">
-                    {message.trim() || 'Your announcement text will render in real-time on adopters’ mobile screens just like this.'}
+                    {message.trim() || 'Message'}
                   </p>
 
                   <div className="notif-footer-hint">
                     <span>Tap to view full details</span>
                     <FiChevronRight />
                   </div>
-                </div>
-
-                {/* Dummy Previous Notification */}
-                <div className="phone-notification-card dim-card">
-                  <div className="card-top-row">
-                    <div className="app-micro-icon dim-icon">
-                      <MdPets />
-                    </div>
-                    <div className="notif-header-text">
-                      <span className="notif-sender">JALRG Shelter</span>
-                      <span className="notif-time">2d ago</span>
-                    </div>
-                  </div>
-                  <h5 className="notif-title dim-title">Application Status Updated</h5>
-                  <p className="notif-body dim-body">Your screening application for Bella has been reviewed.</p>
                 </div>
               </div>
 

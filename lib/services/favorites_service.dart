@@ -26,6 +26,34 @@ class FavoritesService {
     } catch (_) {
       favoritesNotifier.value = {};
     }
+    await _mergeFromSupabase();
+  }
+
+  /// Saved pets follow the account across devices: add the ones saved
+  /// elsewhere, and upload any saved here before the table existed.
+  Future<void> _mergeFromSupabase() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
+      final rows = await client
+          .from('user_favorites')
+          .select('pet_id')
+          .eq('user_id', user.id);
+      final remote = {for (final r in rows) r['pet_id'].toString()};
+      final local = favoritesNotifier.value;
+      // shortcut: a pet unsaved on another phone comes back if this phone
+      // still had it saved; track removals if that starts to matter.
+      for (final petId in local.difference(remote)) {
+        _syncToSupabase(petId, true);
+      }
+      final merged = {...local, ...remote};
+      favoritesNotifier.value = merged;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_storageKey, merged.toList());
+    } catch (e) {
+      debugPrint('Saved pets kept on this device only: $e');
+    }
   }
 
   bool isFavorite(String petId) {

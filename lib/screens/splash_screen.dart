@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 20),
 
             const Text(
-              'Your Journey to a New Best Friend\nStarts Here.',
+              'Adopt a rescue pet from\nJagna, Bohol.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -92,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 15),
 
             const Text(
-              'WARMING UP...',
+              'Loading',
               style: TextStyle(
                 color: Color(0xFFA94327),
                 letterSpacing: 2,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../pet_data.dart';
 import '../saved_pet_store.dart';
 import '../services/favorites_service.dart';
+import '../widgets/app_brand_title.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
 import 'notifications_screen.dart';
@@ -11,11 +12,13 @@ import 'pet_details_screen.dart';
 class PetsScreen extends StatefulWidget {
   final String initialCategory;
   final bool autoFocusSearch;
+  final VoidCallback? onLogoTap;
 
   const PetsScreen({
     super.key,
     this.initialCategory = 'All',
     this.autoFocusSearch = false,
+    this.onLogoTap,
   });
 
   @override
@@ -257,36 +260,10 @@ void dispose() {
       ),
       child: Row(
         children: [
-          // APP LOGO
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8EA),
-                width: 1,
-              ),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/app_launcher_icon.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          // APP LOGO + NAME
+          AppBrandTitle(onTap: widget.onLogoTap),
 
-          const SizedBox(width: 8),
-
-          // APP NAME
-          const Expanded(
-            child: Text(
-              'My Future Pet',
-              style: TextStyle(
-                color: primaryColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          const Spacer(),
 
           // NOTIFICATION
           ValueListenableBuilder<int>(
@@ -357,7 +334,7 @@ void dispose() {
       height: 48,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE1E8EA),
           width: 1,
@@ -431,7 +408,7 @@ void dispose() {
                       ? primaryColor
                       : (isDark ? const Color(0xFF1E293B) : lightBlue),
                   borderRadius:
-                      BorderRadius.circular(22),
+                      BorderRadius.circular(16),
                   border: isDark && !selected
                       ? Border.all(
                           color: const Color(0xFF334155),
@@ -884,7 +861,7 @@ void dispose() {
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withValues(alpha: 0.25)
+                  ? Colors.black.withValues(alpha: 0.05)
                   : Colors.black.withValues(alpha: 0.035),
               blurRadius: 7,
               offset: const Offset(0, 2),
@@ -1074,7 +1051,7 @@ void dispose() {
                                 color: isDark
                                     ? const Color(0xFF0F172A).withValues(alpha: 0.85)
                                     : Colors.white.withValues(alpha: 0.93),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(16),
                                 border: isDark
                                     ? Border.all(
                                         color: const Color(0xFF334155),
@@ -1585,7 +1562,7 @@ void dispose() {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E293B) : Colors.white,
             borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
+              top: Radius.circular(16),
             ),
           ),
           child: SafeArea(

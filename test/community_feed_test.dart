@@ -195,7 +195,7 @@ void main() {
     expect(service.submittedContent, 'My new story');
     expect(service.submittedImage, 'https://example.test/pet.jpg');
     expect(find.text('Create Community Post'), findsOneWidget);
-    expect(find.text('Post published to Community Feed!'), findsNothing);
+    expect(find.text('Post published.'), findsNothing);
     service.fetch = () async => [
       {...row, 'content': 'My new story'},
     ];
@@ -203,7 +203,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Create Community Post'), findsNothing);
     expect(find.text('My new story'), findsOneWidget);
-    expect(find.text('Post published to Community Feed!'), findsOneWidget);
+    expect(find.text('Post published.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

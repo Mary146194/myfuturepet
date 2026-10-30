@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../pet_data.dart';
 import '../services/pet_service.dart';
+import '../widgets/app_brand_title.dart';
 import '../saved_pet_store.dart';
 import 'pets_screen.dart';
 import 'ar_view_screen.dart';
@@ -61,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _goHome() => setState(() => _selectedIndex = 0);
+
   // ============================================================
   // BUILD
   // ============================================================
@@ -78,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
           index: _selectedIndex,
           children: [
             HomeContentScreen(
+              onLogoTap: _goHome,
               onOpenPets: ({String category = 'All', bool search = false}) {
                 _openPets(category: category, search: search);
               },
@@ -87,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
               key: ValueKey('$_petsCategory-$_openSearch'),
               initialCategory: _petsCategory,
               autoFocusSearch: _openSearch,
+              onLogoTap: _goHome,
             ),
 
             if (_selectedIndex == 2)
@@ -100,9 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               const SizedBox.shrink(),
 
-            const FeedScreen(),
+            FeedScreen(onLogoTap: _goHome),
 
             ProfileScreen(
+              onLogoTap: _goHome,
               onBrowsePets: () {
                 _openPets(category: 'All', search: false);
               },
@@ -131,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -218,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         decoration: BoxDecoration(
           color: selected ? selectedBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
         ),
 
         child: Column(
@@ -249,8 +256,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class HomeContentScreen extends StatefulWidget {
   final Function({String category, bool search}) onOpenPets;
+  final VoidCallback? onLogoTap;
 
-  const HomeContentScreen({super.key, required this.onOpenPets});
+  const HomeContentScreen({super.key, required this.onOpenPets, this.onLogoTap});
 
   @override
   State<HomeContentScreen> createState() => _HomeContentScreenState();
@@ -261,23 +269,44 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
   bool _loadingPets = true;
   bool _petLoadFailed = false;
 
+  RealtimeChannel? _petsChannel;
+
   @override
   void initState() {
     super.initState();
     _loadHomePets();
+    // Reload when staff add, edit or adopt out a pet in the admin panel.
+    try {
+      _petsChannel = Supabase.instance.client
+          .channel('public:pets:home')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'pets',
+            callback: (_) {
+              if (mounted) _loadHomePets(quiet: true);
+            },
+          )
+          .subscribe();
+    } catch (_) {
+      // Supabase not initialised (widget tests); pull-to-refresh still works.
+    }
   }
 
   @override
   void dispose() {
+    _petsChannel?.unsubscribe();
     _homePets.dispose();
     super.dispose();
   }
 
-  Future<void> _loadHomePets() async {
-    setState(() {
-      _loadingPets = true;
-      _petLoadFailed = false;
-    });
+  Future<void> _loadHomePets({bool quiet = false}) async {
+    if (!quiet) {
+      setState(() {
+        _loadingPets = true;
+        _petLoadFailed = false;
+      });
+    }
     try {
       final pets = await PetService().fetchPets(
         status: 'available',
@@ -426,36 +455,9 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
 
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark
-                    ? const Color(0xFF334155)
-                    : const Color(0xFFE2E8EA),
-                width: 1,
-              ),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/app_launcher_icon.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          AppBrandTitle(onTap: widget.onLogoTap),
 
-          const SizedBox(width: 8),
-
-          const Expanded(
-            child: Text(
-              'My Future Pet',
-              style: TextStyle(
-                color: primaryColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          const Spacer(),
 
           ValueListenableBuilder<int>(
             valueListenable: NotificationService().unreadCountNotifier,
@@ -523,17 +525,11 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
       width: double.infinity,
       height: 220,
 
-      padding: const EdgeInsets.fromLTRB(25, 27, 25, 25),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
 
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-
-          colors: [Color(0xFFC95635), Color(0xFF99644F)],
-        ),
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFFA94327),
       ),
 
       child: Column(
@@ -810,7 +806,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             onTap: () {
               SavedPetStore.togglePet(pet);
             },
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               width: 32,
               height: 32,
@@ -819,7 +815,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.14),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 1.5),
                   ),
@@ -864,12 +860,12 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
         width: 182,
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+              color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.05),
               blurRadius: 8,
-              offset: const Offset(0, 3),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -974,7 +970,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          '${isFemale ? '♀' : '♂'} ${pet['age'] ?? ''}',
+                          '${isFemale ? 'Female' : 'Male'} · ${pet['age'] ?? ''}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
@@ -1058,12 +1054,12 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF009688),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
                                 color: const Color(
                                   0xFF009688,
-                                ).withValues(alpha: 0.4),
+                                ).withValues(alpha: 0.05),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1.5),
                               ),
@@ -1173,14 +1169,14 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2EAF0),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1258,7 +1254,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '${isFemale ? '♀' : '♂'} ${isFemale ? 'Female' : 'Male'} • ${pet['age'] ?? ''}',
+                            '${isFemale ? 'Female' : 'Male'} · ${pet['age'] ?? ''}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 9.5,
@@ -1301,12 +1297,6 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                                   height: 1.15,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: Color(0xFF009688),
-                              size: 14,
                             ),
                           ],
                         ),

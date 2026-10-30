@@ -53,7 +53,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       backgroundColor: Colors.white,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -105,8 +105,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           const SizedBox(width: 4),
                           Text(
                             item.isBroadcast
-                                ? 'Shelter Broadcast'
-                                : 'Personal Update',
+                                ? 'Announcement'
+                                : 'Update',
                             style: TextStyle(
                               color: item.isBroadcast ? primaryColor : tealColor,
                               fontSize: 11,
@@ -214,7 +214,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Notifications & Alerts',
+          'Notifications',
           style: TextStyle(
             color: darkText,
             fontSize: 16,
@@ -296,7 +296,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'You have $unreadCount unread ${unreadCount == 1 ? 'broadcast' : 'broadcasts'} from Jagna Shelter.',
+                                '$unreadCount unread',
                                 style: const TextStyle(
                                   color: Color(0xFF8C2B11),
                                   fontSize: 11,
@@ -381,12 +381,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6.5),
         decoration: BoxDecoration(
           color: isSelected ? primaryColor : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           label == 'Announcements'
-              ? 'Announcements 📣'
-              : (label == 'Updates' ? 'Updates 🐾' : label),
+              ? 'Announcements'
+              : label,
           style: TextStyle(
             color: isSelected ? Colors.white : darkText,
             fontSize: 11,
@@ -419,7 +419,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     BoxShadow(
                       color: primaryColor.withValues(alpha: 0.05),
                       blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      offset: const Offset(0, 2),
                     ),
                   ]
                 : null,
@@ -469,7 +469,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            item.isBroadcast ? 'Shelter Broadcast' : 'Update',
+                            item.isBroadcast ? 'Announcement' : 'Update',
                             style: TextStyle(
                               color: item.isBroadcast ? primaryColor : tealColor,
                               fontSize: 9,
@@ -582,7 +582,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'When Jagna Shelter publishes announcements, adoption events, or medical updates, they will appear here.',
+              'Shelter announcements and updates on your applications and visits appear here.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: mutedText,
@@ -599,7 +599,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 foregroundColor: primaryColor,
                 side: const BorderSide(color: Color(0xFFFFD8CC)),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),

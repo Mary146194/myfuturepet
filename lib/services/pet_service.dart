@@ -129,6 +129,20 @@ class PetService {
     }
   }
 
+  /// Age label such as "2 yrs" or "5 mos" from a birthdate, or null when the
+  /// shelter recorded none.
+  static String? ageFromBirthdate(dynamic birthdate) {
+    if (birthdate == null) return null;
+    final bday = DateTime.tryParse(birthdate.toString());
+    if (bday == null) return null;
+    final diffDays = DateTime.now().difference(bday).inDays;
+    final years = (diffDays / 365.25).floor();
+    final months = ((diffDays % 365.25) / 30.4).floor();
+    if (years >= 1) return '$years ${years == 1 ? 'yr' : 'yrs'}';
+    if (months >= 1) return '$months ${months == 1 ? 'mo' : 'mos'}';
+    return '$diffDays days';
+  }
+
   /// Helper to normalize pet attributes for consistent UI consumption
   Map<String, dynamic> _normalizePetData(Map<String, dynamic> raw) {
     final shelter = raw['shelters'] as Map<String, dynamic>?;
@@ -146,25 +160,10 @@ class PetService {
       imageUrls.add(legacyImage);
     }
     final imageUrl = imageUrls.isEmpty ? '' : imageUrls.first;
-    // Calculate age string from birthdate
-    String ageStr = raw['age']?.toString() ?? 'Age unknown';
-    if (raw['birthdate'] != null) {
-      try {
-        final bday = DateTime.parse(raw['birthdate'].toString());
-        final now = DateTime.now();
-        final diffDays = now.difference(bday).inDays;
-        final years = (diffDays / 365.25).floor();
-        final months = ((diffDays % 365.25) / 30.4).floor();
-
-        if (years >= 1) {
-          ageStr = '$years ${years == 1 ? 'yr' : 'yrs'}';
-        } else if (months >= 1) {
-          ageStr = '$months ${months == 1 ? 'mo' : 'mos'}';
-        } else {
-          ageStr = '$diffDays days';
-        }
-      } catch (_) {}
-    }
+    final ageStr =
+        ageFromBirthdate(raw['birthdate']) ??
+        raw['age']?.toString() ??
+        'Age unknown';
 
     // Only what the shelter wrote; the details screen says when it is missing.
     final temperamentStr = raw['temperament']?.toString() ?? '';

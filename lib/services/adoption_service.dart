@@ -84,7 +84,7 @@ class AdoptionService {
       final response = await _client
           .from('adoption_applications')
           .select(
-            '*, pets(id, name, type, breed, image_url, status, shelters(id, name, address, contact_number))',
+            '*, pets(id, name, type, breed, birthdate, image_url, status, shelters(id, name, address, contact_number))',
           )
           .eq('applicant_id', user.id)
           .order('created_at', ascending: false);

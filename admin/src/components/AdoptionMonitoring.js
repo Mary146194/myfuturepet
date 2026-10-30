@@ -66,7 +66,14 @@ function AdoptionMonitoring() {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setApplications(data || []);
+
+      // Emails are hidden from direct reads since 006; staff get them here.
+      const { data: profiles } = await supabase.rpc('admin_list_profiles');
+      const emailById = new Map((profiles || []).map((p) => [p.id, p.email]));
+      setApplications((data || []).map((a) => ({
+        ...a,
+        applicant: { ...a.applicant, email: emailById.get(a.applicant_id) || null },
+      })));
     } catch (err) {
       setError('Failed to fetch adoption applications: ' + err.message);
       console.error(err);
@@ -157,6 +164,19 @@ function AdoptionMonitoring() {
     setReviewNotes('');
   };
 
+  // Escape closes the dossier, like the other dialogs.
+  useEffect(() => {
+    if (!selectedApp) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedApp(null);
+        setReviewNotes('');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedApp]);
+
   const filteredApplications = statusFilter === 'all'
     ? applications
     : applications.filter((a) => a.status === statusFilter);
@@ -177,7 +197,7 @@ function AdoptionMonitoring() {
   return (
     <div className="adoption-monitoring">
       <p className="section-subtitle">
-        Review, screen, and track pet adoption requests and applicant qualifications.
+        Adoption applications sent from the app.
       </p>
 
       {toastMessage && (
@@ -234,9 +254,9 @@ function AdoptionMonitoring() {
         <table className="adoptions-table">
           <thead>
             <tr>
-              <th>Pet Target</th>
+              <th>Pet</th>
               <th>Applicant Information</th>
-              <th>Partner Shelter</th>
+              <th>Shelter</th>
               <th>Housing Type</th>
               <th>Submission Date</th>
               <th>Current Status</th>
@@ -292,7 +312,7 @@ function AdoptionMonitoring() {
                       className="review-app-btn"
                       title="Open Full Screening Dossier"
                     >
-                      <FiEye /> Review Dossier
+                      <FiEye /> Review
                     </button>
                   </td>
                 </tr>
@@ -303,7 +323,7 @@ function AdoptionMonitoring() {
                   <div className="empty-adoptions-content">
                     <FiFileText className="empty-icon" />
                     <h4>No Applications in this Category</h4>
-                    <p>New adoption applications submitted via the My Future Pet mobile app will automatically appear here.</p>
+                    <p>Applications sent from the app appear here.</p>
                   </div>
                 </td>
               </tr>
@@ -312,7 +332,7 @@ function AdoptionMonitoring() {
         </table>
       </div>
 
-      {/* Review Dossier Modal */}
+      {/* Review Modal */}
       {selectedApp && (
         <div className="adoption-modal-backdrop" onClick={closeDetailsModal}>
           <div className="adoption-dossier-card" onClick={(e) => e.stopPropagation()}>
@@ -322,7 +342,7 @@ function AdoptionMonitoring() {
                   <MdPets />
                 </div>
                 <div>
-                  <h3>Adoption Screening Dossier</h3>
+                  <h3>Adoption application</h3>
                   <span className="dossier-id-sub">Application #{selectedApp.id.slice(0, 8).toUpperCase()}</span>
                 </div>
               </div>
@@ -338,7 +358,7 @@ function AdoptionMonitoring() {
                   <MdPets />
                 </div>
                 <div className="pet-banner-info">
-                  <h4>Target Pet: {selectedApp.pet?.name || 'Shelter Pet'}</h4>
+                  <h4>Pet: {selectedApp.pet?.name || 'Shelter Pet'}</h4>
                   <span>
                     {selectedApp.pet?.type?.toUpperCase()} • Breed: {selectedApp.pet?.breed || 'Domestic'} • Shelter: {selectedApp.pet?.shelter?.name || 'JALRG'}
                   </span>
@@ -407,7 +427,7 @@ function AdoptionMonitoring() {
 
               {/* Reason for Adoption */}
               <div className="dossier-reason-box">
-                <h5>Reason for Adoption &amp; Commitment Statement</h5>
+                <h5>Reason for adopting</h5>
                 <p>
                   &quot;{selectedApp.reason_for_adoption || 'Committed to providing a loving, safe, and permanent forever home for this rescue animal.'}&quot;
                 </p>
@@ -415,7 +435,7 @@ function AdoptionMonitoring() {
 
               {/* Review Notes Section */}
               <div className="dossier-notes-box">
-                <h5>Administrator &amp; Shelter Staff Review Notes</h5>
+                <h5>Review notes</h5>
                 <textarea
                   rows="3"
                   placeholder="Record assessment notes, phone interview impressions, or required follow-up verification..."

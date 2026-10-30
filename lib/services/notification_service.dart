@@ -196,6 +196,9 @@ class NotificationService {
           final List<dynamic> notifData = notifResponse as List<dynamic>;
           for (final item in notifData) {
             final map = item as Map<String, dynamic>;
+            // fanout_announcement copies each announcement into every user's
+            // notifications; the broadcast itself is already listed above.
+            if (map['type'] == 'announcement') continue;
             final id = map['id']?.toString() ?? '';
             final isRead = map['read_at'] != null;
             final createdAt = DateTime.tryParse(map['created_at']?.toString() ?? '') ??

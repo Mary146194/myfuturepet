@@ -1,7 +1,7 @@
 .community-posts {
-  background: linear-gradient(145deg, #ffffff, #fdfbf9);
+  background: #ffffff;
   padding: 30px;
-  border-radius: 20px;
+  border-radius: 8px;
   box-shadow: 
     0 15px 40px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
@@ -46,10 +46,10 @@
 
 .refresh-btn {
   padding: 10px 20px;
-  background: linear-gradient(145deg, #FF6B35, #FF5520);
+  background: #FF6B35;
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 700;
   transition: all 0.3s ease;
@@ -61,7 +61,7 @@
 }
 
 .refresh-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(255, 107, 53, 0.35);
 }
 
@@ -85,7 +85,7 @@
   top: 25px;
   right: 30px;
   padding: 12px 20px;
-  border-radius: 12px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -148,7 +148,7 @@
 .search-input-wrapper input {
   width: 100%;
   padding: 12px 40px 12px 40px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e3ded9;
   background: #ffffff;
   font-size: 14px;
@@ -183,7 +183,7 @@
 
 .filter-chip {
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 8px;
   border: 1px solid #e8e3dd;
   background: #fbf9f6;
   color: #6a625b;
@@ -216,7 +216,7 @@
   margin-bottom: 24px;
   background: #faf7f4;
   padding: 16px 20px;
-  border-radius: 14px;
+  border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
@@ -262,7 +262,7 @@
 
 .post-feed-card {
   background: #ffffff;
-  border-radius: 18px;
+  border-radius: 8px;
   border: 1px solid #ebe5df;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
   display: flex;
@@ -273,7 +273,7 @@
 }
 
 .post-feed-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-1px);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
   border-color: #ffd4c2;
 }
@@ -283,7 +283,7 @@
 }
 
 .pinned-badge-banner {
-  background: linear-gradient(135deg, #fff3eb, #ffe8da);
+  background: #fff3eb;
   color: #d35400;
   padding: 6px 16px;
   font-size: 11px;
@@ -303,8 +303,8 @@
 .author-avatar {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #FF6B35, #ff8e53);
+  border-radius: 8px;
+  background: #FF6B35;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -406,7 +406,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  backdrop-filter: blur(4px);
 }
 
 .post-card-footer {
@@ -480,7 +479,7 @@
 .status-pill {
   display: inline-block;
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
 }
@@ -525,12 +524,11 @@
   justify-content: center;
   z-index: 1000;
   padding: 20px;
-  backdrop-filter: blur(4px);
 }
 
 .lightbox-modal {
   background: #ffffff;
-  border-radius: 18px;
+  border-radius: 8px;
   max-width: 650px;
   width: 100%;
   overflow: hidden;
@@ -611,13 +609,12 @@
   align-items: center;
   justify-content: center;
   z-index: 999;
-  backdrop-filter: blur(3px);
   padding: 20px;
 }
 
 .delete-confirm-card {
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 8px;
   padding: 30px;
   max-width: 440px;
   width: 100%;
@@ -656,7 +653,7 @@
 .post-preview-snippet {
   background: #faf7f4;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   border-left: 3px solid #FF6B35;
   margin-bottom: 22px;
   font-size: 12.5px;
@@ -672,7 +669,7 @@
 .delete-modal-actions button {
   flex: 1;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -704,7 +701,7 @@
   text-align: center;
   padding: 60px 30px;
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px dashed #e3ded8;
 }
 
@@ -735,10 +732,10 @@
 /* Create Post Header Button */
 .create-post-header-btn {
   padding: 10px 18px;
-  background: linear-gradient(135deg, #27ae60, #219653);
+  background: #27ae60;
   color: #ffffff;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 700;
   font-size: 13px;
@@ -750,14 +747,14 @@
 }
 
 .create-post-header-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(39, 174, 96, 0.35);
 }
 
 /* Create Post Modal Card */
 .create-post-modal-card {
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 8px;
   padding: 28px;
   max-width: 580px;
   width: 100%;
@@ -785,7 +782,7 @@
 .create-modal-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #eafaf1;
   color: #27ae60;
   display: flex;
@@ -850,7 +847,7 @@
 .create-post-form select {
   width: 100%;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #dfd8d1;
   background: #faf8f5;
   font-size: 13.5px;
@@ -878,7 +875,7 @@
 
 .create-modal-preview-box {
   margin-top: 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   max-height: 180px;
   background: #f0ebe4;
@@ -897,7 +894,7 @@
   background: #fff8f4;
   border: 1px solid #ffd4c2;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .checkbox-container {
@@ -933,7 +930,7 @@
 
 .create-modal-actions button {
   padding: 12px 22px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -942,13 +939,13 @@
 }
 
 .publish-submit-btn {
-  background: linear-gradient(135deg, #FF6B35, #FF5520);
+  background: #FF6B35;
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(255, 107, 53, 0.25);
 }
 
 .publish-submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(255, 107, 53, 0.35);
 }
 
@@ -1011,7 +1008,7 @@
 
 .comments-floating-modal {
   background: #ffffff;
-  border-radius: 22px;
+  border-radius: 8px;
   max-width: 660px;
   width: 100%;
   max-height: 88vh;
@@ -1041,7 +1038,7 @@
 .comments-header-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #fff0e8;
   color: #FF6B35;
   font-size: 20px;
@@ -1114,7 +1111,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #eafaf1;
   color: #27ae60;
   font-size: 11.5px;
@@ -1155,7 +1152,7 @@
   gap: 14px;
   background: #ffffff;
   padding: 14px 18px;
-  border-radius: 14px;
+  border-radius: 8px;
   border: 1px solid #ece5de;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   align-items: flex-start;
@@ -1171,7 +1168,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #FF6B35, #e0531f);
+  background: #FF6B35;
   color: white;
   display: flex;
   align-items: center;
@@ -1282,7 +1279,7 @@
   flex: 1;
   padding: 12px 16px;
   border: 1.5px solid #dcd4cc;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 13.5px;
   background: #ffffff;
   color: #2b2623;
@@ -1297,10 +1294,10 @@
 
 .floating-reply-btn {
   padding: 12px 22px;
-  background: linear-gradient(135deg, #FF6B35, #e0531f);
+  background: #FF6B35;
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   font-weight: 700;
   font-size: 13.5px;
   cursor: pointer;

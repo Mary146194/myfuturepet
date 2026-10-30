@@ -274,4 +274,25 @@ void main() {
     expect(find.text('Sky'), findsOneWidget);
     expect(find.text('3D model unavailable'), findsOneWidget);
   });
+
+  testWidgets('pulling the pet list down reloads it in place', (tester) async {
+    service.pets = [
+      {'id': 'one', 'name': 'Bantay', 'model_url': 'bantay.glb'},
+    ];
+    await pumpAR(tester);
+    service.pets = [
+      {'id': 'one', 'name': 'Bantay', 'model_url': 'bantay.glb'},
+      {'id': 'two', 'name': 'Sky', 'model_url': 'sky.glb'},
+    ];
+    await tester.fling(find.text('Bantay'), const Offset(0, 300), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('Sky'), findsOneWidget);
+
+    // A failed refresh keeps the list and says so.
+    service.fail = true;
+    await tester.fling(find.text('Bantay'), const Offset(0, 300), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('Sky'), findsOneWidget);
+    expect(find.text('Could not refresh pets. Please try again.'), findsOneWidget);
+  });
 }

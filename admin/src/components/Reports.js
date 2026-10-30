@@ -258,7 +258,7 @@ function Reports() {
       <div className="reports-header-area">
         <div>
           <p className="section-subtitle">
-            Comprehensive platform records, adoption metrics, and analytical summaries for Jagna Animal Lover & Rescue Group.
+            Adoption numbers for Jagna Animal Lover and Rescue Group, from current records.
           </p>
         </div>
 
@@ -292,7 +292,7 @@ function Reports() {
           <div className="stat-card-details">
             <span className="stat-label">Registered Accounts</span>
             <h3 className="stat-number">{stats.totalUsers}</h3>
-            <p className="stat-subtext">Verified adopters &amp; shelter staff</p>
+            <p className="stat-subtext">Adopters and shelter staff</p>
           </div>
         </div>
 
@@ -340,7 +340,7 @@ function Reports() {
           <div className="stat-card-details">
             <span className="stat-label">Community Stories</span>
             <h3 className="stat-number">{stats.totalPosts}</h3>
-            <p className="stat-subtext">Feed updates &amp; announcements</p>
+            <p className="stat-subtext">Posts in the community feed</p>
           </div>
         </div>
       </div>
@@ -352,7 +352,7 @@ function Reports() {
           <div className="card-top">
             <div>
               <h4><MdPets style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Pet Placement Distribution</h4>
-              <p>Proportion of available rescued pets vs successfully adopted</p>
+              <p>Available pets compared with adopted pets</p>
             </div>
             <span className="ratio-highlight">{adoptedPct}% Placed</span>
           </div>
@@ -387,7 +387,7 @@ function Reports() {
           <div className="card-top">
             <div>
               <h4><FiFilter style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Adoption Screening Funnel</h4>
-              <p>Stage breakdown across all submitted applicant dossiers</p>
+              <p>Applications by status</p>
             </div>
             <span className="ratio-highlight">{approvedPct}% Approval Rate</span>
           </div>
@@ -439,8 +439,8 @@ function Reports() {
       {/* Key Performance Indicators Summary Cards */}
       <div className="records-section">
         <div className="records-header">
-          <h3>Platform Health &amp; Operational Efficiency</h3>
-          <p className="records-sub">Calculated real-time operational indices for shelter management</p>
+          <h3>Key ratios</h3>
+          <p className="records-sub">Worked out from the records above</p>
         </div>
 
         <div className="metrics-container">
@@ -485,7 +485,7 @@ function Reports() {
                   ? (stats.totalApplications / stats.totalPets).toFixed(2)
                   : '0.00'}
               </div>
-              <small>Interest density across listed rescues</small>
+              <small>Applications divided by listed pets</small>
             </div>
           </div>
         </div>

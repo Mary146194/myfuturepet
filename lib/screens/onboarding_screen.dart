@@ -28,14 +28,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'image': 'assets/images/pic2.png',
       'title': 'Visualize Your New Friend',
       'description':
-          'Use our Augmented Reality feature to see how your future pet fits into your home and lifestyle.',
+          'See a life-size 3D model of the pet in your room with AR.',
     },
 
     {
       'image': 'assets/images/pic3.png',
       'title': 'Bring Happiness Home',
       'description':
-          'Start your journey today and find the perfect companion for you. Your new best friend is waiting.',
+          'Apply to adopt in the app and book a visit to meet the pet at the shelter.',
     },
   ];
 

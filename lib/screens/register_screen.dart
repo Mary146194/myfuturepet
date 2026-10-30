@@ -141,7 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // If Supabase automatically creates a session
       if (response.session != null) {
         _showMessage(
-          'Account created successfully!',
+          'Account created.',
           isError: false,
         );
 
@@ -157,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // If email verification is required
       else {
         _showMessage(
-          'Account created! Please check your email to verify your account.',
+          'Account created. Check your email to verify it.',
           isError: false,
         );
 
@@ -297,15 +297,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: Colors.white.withValues(alpha: 0.88),
 
                       borderRadius:
-                          BorderRadius.circular(24),
+                          BorderRadius.circular(16),
 
                       boxShadow: [
                         BoxShadow(
                           color:
                               Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 12,
+                          blurRadius: 8,
                           offset:
-                              const Offset(0, 4),
+                              const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -636,7 +636,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   height: size.height * 0.055,
                   child: const Center(
                     child: Text(
-                      'Powered by  ♡ My Future Pet',
+                      'My Future Pet',
                       style: TextStyle(
                         fontSize: 10,
                         color: Color(0xFF8E817D),
@@ -731,7 +731,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               enabledBorder:
                   OutlineInputBorder(
                 borderRadius:
-                    BorderRadius.circular(25),
+                    BorderRadius.circular(16),
 
                 borderSide:
                     const BorderSide(
@@ -743,7 +743,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               focusedBorder:
                   OutlineInputBorder(
                 borderRadius:
-                    BorderRadius.circular(25),
+                    BorderRadius.circular(16),
 
                 borderSide:
                     const BorderSide(
@@ -917,7 +917,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
 //       if (response.session != null) {
 //         _showMessage(
-//           'Account created successfully!',
+//           'Account created.',
 //           isError: false,
 //         );
 
@@ -937,7 +937,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
 //       else {
 //         _showMessage(
-//           'Account created! Please check your email to verify your account.',
+//           'Account created. Check your email to verify it.',
 //           isError: false,
 //         );
 
@@ -1066,8 +1066,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 //                 BoxShadow(
 //                   color:
 //                       Colors.black.withOpacity(0.05),
-//                   blurRadius: 15,
-//                   offset: const Offset(0, 5),
+//                   blurRadius: 8,
+//                   offset: const Offset(0, 2),
 //                 ),
 //               ],
 //             ),
@@ -1116,7 +1116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 //                 const SizedBox(height: 8),
 
 //                 const Text(
-//                   'Start your pet adoption journey.',
+//                   'Create an account to apply for adoption.',
 
 //                   textAlign: TextAlign.center,
 
@@ -1602,7 +1602,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 //                 const SizedBox(height: 8),
 
 //                 const Text(
-//                   'Start your pet adoption journey.',
+//                   'Create an account to apply for adoption.',
 //                   textAlign: TextAlign.center,
 //                   style: TextStyle(
 //                     color: Color(0xFF6E5D57),

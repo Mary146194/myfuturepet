@@ -210,32 +210,10 @@ export default function ImageUploader({
         <div className="image-input-group">
           <input
             type="url"
-            placeholder="https://... direct image link from Unsplash, Storage, or CDN"
+            placeholder="https://... direct image link"
             value={currentUrl}
             onChange={(e) => onChange(e.target.value)}
           />
-          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-            <button
-              type="button"
-              className="btn-preset-img"
-              onClick={() => {
-                const sampleDog = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800';
-                onChange(sampleDog);
-              }}
-            >
-              Use Sample Dog Photo
-            </button>
-            <button
-              type="button"
-              className="btn-preset-img"
-              onClick={() => {
-                const sampleCat = 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800';
-                onChange(sampleCat);
-              }}
-            >
-              Use Sample Cat Photo
-            </button>
-          </div>
           {currentUrl && (
             <div className="modal-image-preview">
               <img
@@ -244,7 +222,7 @@ export default function ImageUploader({
                 onError={(e) => { e.target.style.display = 'none'; }}
                 onLoad={(e) => { e.target.style.display = 'block'; }}
               />
-              <span>Live Image Preview</span>
+              <span>Preview</span>
             </div>
           )}
         </div>

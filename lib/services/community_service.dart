@@ -198,8 +198,16 @@ class CommunityService {
       throw Exception('Comment exceeds maximum length of 1,000 characters.');
     }
 
+    // Same name as on posts (the profile), not the sign-up metadata.
+    Map<String, dynamic>? profile;
+    try {
+      profile = await fetchMyPublicProfile();
+    } catch (_) {}
     final String authorName =
-        user.userMetadata?['full_name'] ?? user.userMetadata?['name'] ?? 'User';
+        profile?['full_name']?.toString() ??
+        user.userMetadata?['full_name'] ??
+        user.userMetadata?['name'] ??
+        'User';
 
     // Only report a comment as posted once the database has it; the
     // trg_sync_comment_count trigger keeps the post's comment_count in step.

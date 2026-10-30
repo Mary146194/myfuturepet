@@ -120,14 +120,14 @@ function AppointmentManagement() {
           let notifTitle = 'Appointment Update';
           let notifMsg = `Your appointment for ${petName} is now ${newStatus}.`;
           if (newStatus === 'confirmed') {
-            notifTitle = 'Appointment Confirmed! 📅';
-            notifMsg = `Your appointment for ${petName} has been confirmed! We look forward to seeing you.`;
+            notifTitle = 'Visit confirmed';
+            notifMsg = `Your visit to meet ${petName} is confirmed.`;
           } else if (newStatus === 'cancelled') {
             notifTitle = 'Appointment Cancelled';
             notifMsg = `Your appointment for ${petName} was cancelled. ${notes ? 'Reason: ' + notes : ''}`;
           } else if (newStatus === 'completed') {
-            notifTitle = 'Appointment Completed 🐾';
-            notifMsg = `Thank you for visiting! Your appointment for ${petName} is marked as completed.`;
+            notifTitle = 'Visit completed';
+            notifMsg = `Your visit to meet ${petName} is marked as completed.`;
           }
           await supabase.from('notifications').insert({
             user_id: userId,
@@ -216,7 +216,7 @@ function AppointmentManagement() {
       <div className="appt-header">
         <div>
           <p className="section-subtitle">
-            Review and schedule adopter visits and meet-and-greets at Jagna Animal Lover and Rescue Group
+            Shelter visits and meet-and-greets booked from the app.
           </p>
         </div>
         <div className="header-actions">

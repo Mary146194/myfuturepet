@@ -65,7 +65,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             return AlertDialog(
               backgroundColor: dialogBg,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
               title: Row(
                 children: [
@@ -347,7 +347,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                                         color: Colors.white,
                                       ),
                                       SizedBox(width: 8),
-                                      Text('Password updated successfully!'),
+                                      Text('Password updated.'),
                                     ],
                                   ),
                                   backgroundColor: Colors.green.shade700,
@@ -414,7 +414,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         return AlertDialog(
           backgroundColor: dialogBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
             title,
@@ -509,7 +509,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             Container(
               decoration: BoxDecoration(
                 color: cardBg,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: borderCol),
               ),
               child: Column(
@@ -601,7 +601,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             Container(
               decoration: BoxDecoration(
                 color: cardBg,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: borderCol),
               ),
               child: Column(
@@ -644,7 +644,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             Container(
               decoration: BoxDecoration(
                 color: cardBg,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: borderCol),
               ),
               child: Column(

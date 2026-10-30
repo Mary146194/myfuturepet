@@ -287,7 +287,7 @@ function PetManagement() {
       <div className="pet-mgmt-header">
         <div>
           <p className="section-subtitle">
-            Manage adoptable rescue animals, health records, and adoption status for Jagna Animal Lover and Rescue Group
+            Pets listed in the app, with their health records and adoption status.
           </p>
         </div>
         <div className="header-actions">
@@ -594,7 +594,7 @@ function PetManagement() {
                     >
                       <option value="available">Available for Adoption</option>
                       <option value="pending">Pending Review</option>
-                      <option value="adopted">Adopted (Happy Tail)</option>
+                      <option value="adopted">Adopted</option>
                       <option value="removed">Removed / Archived</option>
                     </select>
                   </div>
@@ -646,7 +646,7 @@ function PetManagement() {
                 </div>
 
                 <div className="form-field">
-                  <label>Adoption Requirements (Non-Commercial)</label>
+                  <label>Adoption requirements</label>
                   <textarea
                     rows={2}
                     placeholder="e.g. Valid government ID, home check agreement, fenced yard preferred..."

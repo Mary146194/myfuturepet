@@ -259,7 +259,7 @@ function CommunityPosts() {
         return;
       }
 
-      showToast('Community post published successfully!');
+      showToast('Post published.');
       setIsCreateModalOpen(false);
       setNewContent('');
       setNewImageUrl('');
@@ -431,7 +431,7 @@ function CommunityPosts() {
       <div className="posts-header-area">
         <div>
           <p className="section-subtitle">
-            Monitor, review, and moderate community feed updates, shelter stories, and pet announcements.
+            Posts and comments from the app's community feed.
           </p>
         </div>
         <div className="posts-header-actions">
@@ -493,11 +493,11 @@ function CommunityPosts() {
       {/* Metric Summary Ribbon */}
       <div className="posts-summary-ribbon">
         <div className="summary-item">
-          <span className="summary-label">Total Feed Posts</span>
+          <span className="summary-label">Posts</span>
           <span className="summary-val">{posts.length}</span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Pinned Highlights</span>
+          <span className="summary-label">Pinned</span>
           <span className="summary-val pinned-color">{posts.filter((p) => p.is_pinned).length}</span>
         </div>
         <div className="summary-item">
@@ -505,7 +505,7 @@ function CommunityPosts() {
           <span className="summary-val media-color">{posts.filter((p) => Boolean(p.image_url)).length}</span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Total Hearts / Likes</span>
+          <span className="summary-label">Likes</span>
           <span className="summary-val likes-color">
             {posts.reduce((sum, p) => sum + (p.like_count || 0), 0)}
           </span>
@@ -684,7 +684,7 @@ function CommunityPosts() {
                 <div className="no-comments-floating-state">
                   <FiMessageSquare className="empty-floating-icon" />
                   <h4>No comments on this post yet</h4>
-                  <p>When users on the Android mobile app comment on this post, they will appear here in real-time.</p>
+                  <p>Comments from the app appear here.</p>
                 </div>
               ) : (
                 commentsByPost[activeCommentsModalPost.id].map((cmt) => (
@@ -780,7 +780,7 @@ function CommunityPosts() {
             </div>
             <h3>Remove Community Post?</h3>
             <p>
-              Are you sure you want to remove this post from the community feed? This action will permanently remove it for all mobile app users.
+              Are you sure you want to remove this post from the community feed? This cannot be undone.
             </p>
             {deleteModal.post && (
               <div className="post-preview-snippet">
@@ -817,8 +817,8 @@ function CommunityPosts() {
                   <MdPets />
                 </div>
                 <div>
-                  <h3>Publish Shelter Story or Update</h3>
-                  <p className="modal-subtitle">Share an official update, success story, or pet care tip to the Community Feed.</p>
+                  <h3>New post</h3>
+                  <p className="modal-subtitle">Posted as the shelter in the app's community feed.</p>
                 </div>
               </div>
               <button 
@@ -832,7 +832,7 @@ function CommunityPosts() {
 
             <form onSubmit={handleCreatePost} className="create-post-form">
               <div className="form-group">
-                <label>Story Content / Update *</label>
+                <label>Post *</label>
                 <textarea
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
@@ -889,7 +889,7 @@ function CommunityPosts() {
                     onChange={(e) => setNewIsPinned(e.target.checked)}
                   />
                   <span className="checkbox-text">
-                    <FiBookmark /> Pin to top of Community Feed (Highlight for all mobile users)
+                    <FiBookmark /> Pin to the top of the feed
                   </span>
                 </label>
               </div>

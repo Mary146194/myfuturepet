@@ -297,7 +297,7 @@ Future<void> _confirmAppointment() async {
         backgroundColor: Colors.white,
 
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
         ),
 
         title: Row(
@@ -439,8 +439,8 @@ Future<void> _confirmAppointment() async {
         decoration: BoxDecoration(
           color: detailBlue,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(26),
-            topRight: Radius.circular(26),
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
           ),
         ),
 
@@ -632,7 +632,7 @@ Future<void> _confirmAppointment() async {
                     color: Colors.white,
 
                     borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(16),
 
                     boxShadow: [
                       BoxShadow(
@@ -642,7 +642,7 @@ Future<void> _confirmAppointment() async {
                         blurRadius: 8,
 
                         offset:
-                            const Offset(0, 3),
+                            const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -802,7 +802,7 @@ Future<void> _confirmAppointment() async {
                     color: Colors.white,
 
                     borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(16),
 
                     boxShadow: [
                       BoxShadow(
@@ -812,7 +812,7 @@ Future<void> _confirmAppointment() async {
                         blurRadius: 8,
 
                         offset:
-                            const Offset(0, 3),
+                            const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -942,7 +942,7 @@ Future<void> _confirmAppointment() async {
                     color: Colors.white,
 
                     borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(16),
 
                     boxShadow: [
                       BoxShadow(
@@ -952,7 +952,7 @@ Future<void> _confirmAppointment() async {
                         blurRadius: 8,
 
                         offset:
-                            const Offset(0, 3),
+                            const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -1078,7 +1078,7 @@ Future<void> _confirmAppointment() async {
                     color: Colors.white,
 
                     borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(16),
 
                     boxShadow: [
                       BoxShadow(
@@ -1088,7 +1088,7 @@ Future<void> _confirmAppointment() async {
                         blurRadius: 8,
 
                         offset:
-                            const Offset(0, 3),
+                            const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -1312,7 +1312,7 @@ Future<void> _confirmAppointment() async {
         onTap: onTap,
 
         borderRadius:
-            BorderRadius.circular(20),
+            BorderRadius.circular(16),
 
         child: Container(
           width: 38,

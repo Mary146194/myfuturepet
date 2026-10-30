@@ -217,7 +217,7 @@ class _MyApplicationsScreenState
                   shape:
                       RoundedRectangleBorder(
                     borderRadius:
-                        BorderRadius.circular(26),
+                        BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -253,9 +253,9 @@ class _MyApplicationsScreenState
                   const SizedBox(height: 10),
                   _buildAdoptionStepRow('1', 'Find a pet you love and submit an adoption application.'),
                   const SizedBox(height: 8),
-                  _buildAdoptionStepRow('2', 'Shelter staff reviews your screening within 24–48 hours.'),
+                  _buildAdoptionStepRow('2', 'Shelter staff review your application.'),
                   const SizedBox(height: 8),
-                  _buildAdoptionStepRow('3', 'Once approved, book a shelter visit to meet your pet in person!'),
+                  _buildAdoptionStepRow('3', 'Once approved, book a shelter visit to meet your pet.'),
                 ],
               ),
             ),
@@ -434,7 +434,7 @@ class _MyApplicationsScreenState
         color: Colors.white,
 
         borderRadius:
-            BorderRadius.circular(18),
+            BorderRadius.circular(16),
 
         border: Border.all(
           color: borderColor,
@@ -443,8 +443,8 @@ class _MyApplicationsScreenState
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -466,7 +466,7 @@ class _MyApplicationsScreenState
 
               ClipRRect(
                 borderRadius:
-                    BorderRadius.circular(14),
+                    BorderRadius.circular(12),
 
                 child: Image.network(
                   image,
@@ -573,7 +573,7 @@ class _MyApplicationsScreenState
                             ),
                             decoration: BoxDecoration(
                               color: badgeBg,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
                               status,
@@ -624,7 +624,7 @@ class _MyApplicationsScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Application Approved! 🎉',
+                          'Application approved',
                           style: TextStyle(
                             color: Color(0xFF1B5E20),
                             fontSize: 12,
@@ -1028,7 +1028,7 @@ class ApplicationDetailsScreen
                 color: Colors.white,
 
                 borderRadius:
-                    BorderRadius.circular(18),
+                    BorderRadius.circular(16),
 
                 border: Border.all(
                   color: borderColor,
