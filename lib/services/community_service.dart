@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,42 +51,19 @@ class CommunityService {
     return List<Map<String, dynamic>>.from(rows);
   }
 
-  // Local comments cache backed by SharedPreferences
-  static final Map<String, List<Map<String, dynamic>>> _localComments = {};
   static final Map<String, int> _localCommentCounts = {};
   static bool _loadedFromPrefs = false;
 
+  // Older builds kept failed comments on the device and showed them as
+  // posted. They never reached the database, so drop them once.
   static Future<void> _loadLocalComments() async {
     if (_loadedFromPrefs) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString('community_local_comments');
-      if (saved != null && saved.isNotEmpty) {
-        final decoded = jsonDecode(saved) as Map<String, dynamic>;
-        decoded.forEach((key, value) {
-          if (value is List) {
-            _localComments[key] = value
-                .map((c) => Map<String, dynamic>.from(c as Map))
-                .toList();
-            _localCommentCounts[key] = _localComments[key]!.length;
-          }
-        });
-      }
+      await prefs.remove('community_local_comments');
       _loadedFromPrefs = true;
     } catch (e) {
-      debugPrint('Error loading local comments from prefs: $e');
-    }
-  }
-
-  static Future<void> _saveLocalComments() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'community_local_comments',
-        jsonEncode(_localComments),
-      );
-    } catch (e) {
-      debugPrint('Error saving local comments to prefs: $e');
+      debugPrint('Error clearing old local comments: $e');
     }
   }
 
@@ -194,22 +170,13 @@ class CommunityService {
           )
           .toList();
 
-      // Merge with any local comments
-      final local = _localComments[postId] ?? [];
-      final Set<String> existingIds = remoteComments
-          .map((c) => c['id']?.toString() ?? '')
-          .toSet();
-      for (final loc in local) {
-        if (!existingIds.contains(loc['id'])) {
-          remoteComments.add(loc);
-        }
-      }
-
+      // Comments kept only on this device by older builds never reached the
+      // shelter, so they are no longer shown as if they were posted.
       _localCommentCounts[postId] = remoteComments.length;
       return remoteComments;
     } catch (e) {
-      debugPrint('Notice: Remote post_comments fallback to local memory: $e');
-      return _localComments[postId] ?? [];
+      debugPrint('Could not load comments: $e');
+      return [];
     }
   }
 
@@ -234,56 +201,32 @@ class CommunityService {
     final String authorName =
         user.userMetadata?['full_name'] ?? user.userMetadata?['name'] ?? 'User';
 
-    final newComment = <String, dynamic>{
-      'id': 'cmt_${DateTime.now().millisecondsSinceEpoch}',
-      'post_id': postId,
-      'user_id': user.id,
-      'content': trimmedContent,
-      'created_at': DateTime.now().toIso8601String(),
-      'author': {'id': user.id, 'full_name': authorName},
-    };
-
-    // Store in local cache and save immediately
-    if (!_localComments.containsKey(postId)) {
-      _localComments[postId] = [];
-    }
-    _localComments[postId]!.add(newComment);
-    _localCommentCounts[postId] = _localComments[postId]!.length;
-    await _saveLocalComments();
-
-    // Attempt remote save to Supabase
+    // Only report a comment as posted once the database has it; the
+    // trg_sync_comment_count trigger keeps the post's comment_count in step.
+    final List<dynamic> res;
     try {
-      final insertData = {
-        'post_id': postId,
-        'user_id': user.id,
-        'content': content.trim(),
-      };
-      final res = await _client
+      res = await _client
           .from('post_comments')
-          .insert(insertData)
+          .insert({
+            'post_id': postId,
+            'user_id': user.id,
+            'content': trimmedContent,
+          })
           .select();
-      if (res.isNotEmpty) {
-        final remote = Map<String, dynamic>.from(res[0]);
-        remote['author'] = newComment['author'];
-        // Remove temporary local comment now that remote insert confirmed
-        _localComments[postId]?.removeWhere((c) => c['id'] == newComment['id']);
-        await _saveLocalComments();
-        return remote;
-      }
     } catch (e) {
-      debugPrint('Saved locally, remote sync pending migration: $e');
+      debugPrint('Comment insert failed: $e');
+      throw Exception(
+        'Could not post your comment. The post may have been removed, or you are offline.',
+      );
+    }
+    if (res.isEmpty) {
+      throw Exception('Could not post your comment. Please try again.');
     }
 
-    // Try incrementing comment_count on post
-    try {
-      final current = _localCommentCounts[postId] ?? 1;
-      await _client
-          .from('community_posts')
-          .update({'comment_count': current})
-          .eq('id', postId);
-    } catch (_) {}
-
-    return newComment;
+    final remote = Map<String, dynamic>.from(res[0] as Map);
+    remote['author'] = {'id': user.id, 'full_name': authorName};
+    _localCommentCounts[postId] = (_localCommentCounts[postId] ?? 0) + 1;
+    return remote;
   }
 
   /// Create a new community post (users or shelters)

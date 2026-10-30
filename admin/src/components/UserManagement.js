@@ -100,12 +100,17 @@ function UserManagement() {
     }
 
     try {
-      const { error: deleteError } = await supabase
+      const { data: removed, error: deleteError } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('id');
 
       if (deleteError) throw deleteError;
+      // Row-level security blocks profile deletes without an error, only zero rows.
+      if (!removed || removed.length === 0) {
+        throw new Error('accounts can only be removed from the Supabase dashboard (Authentication → Users).');
+      }
       showToast(`User ${user.full_name || user.email} deleted successfully.`);
       setProfiles((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {

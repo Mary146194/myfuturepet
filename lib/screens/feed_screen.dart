@@ -1004,8 +1004,12 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
+        // Give the text back so a failed comment is not lost.
+        _commentCtrl.text = text;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please log in to comment: $e')),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+          ),
         );
       }
     }

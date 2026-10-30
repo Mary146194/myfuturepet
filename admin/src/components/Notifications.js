@@ -171,13 +171,15 @@ function Notifications() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
 
     try {
-      const { error: deleteError } = await supabase
+      const { data: removed, error: deleteError } = await supabase
         .from('announcements')
         .delete()
-        .eq('id', deleteModal.item.id);
+        .eq('id', deleteModal.item.id)
+        .select('id');
 
-      if (deleteError) {
-        showToast('Error removing announcement: ' + deleteError.message, 'error');
+      // Row-level security returns no error when it blocks a delete, only zero rows.
+      if (deleteError || !removed || removed.length === 0) {
+        showToast('Error removing announcement: ' + (deleteError?.message || 'you do not have permission to delete it.'), 'error');
         setDeleteModal((prev) => ({ ...prev, loading: false }));
         return;
       }

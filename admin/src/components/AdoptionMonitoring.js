@@ -117,8 +117,6 @@ function AdoptionMonitoring() {
         updateData.review_notes = notes;
       }
 
-      const targetApp = (applications && applications.find(a => a.id === appId)) || selectedApp;
-
       const { error: updateError } = await supabase
         .from('adoption_applications')
         .update(updateData)
@@ -126,30 +124,10 @@ function AdoptionMonitoring() {
 
       if (updateError) throw updateError;
 
-      // Synchronize pet status upon application decision
-      if (newStatus === 'approved') {
-        if (targetApp && targetApp.pet && targetApp.pet.id) {
-          try {
-            await supabase
-              .from('pets')
-              .update({ status: 'adopted' })
-              .eq('id', targetApp.pet.id);
-          } catch (e) {
-            console.error('Failed to update pet status to adopted:', e);
-          }
-        }
-      } else if (newStatus === 'rejected') {
-        if (targetApp && targetApp.pet && targetApp.pet.id) {
-          try {
-            await supabase
-              .from('pets')
-              .update({ status: 'available' })
-              .eq('id', targetApp.pet.id);
-          } catch (e) {
-            console.error('Failed to revert pet status to available:', e);
-          }
-        }
-      }
+      // Pet status follows the decision in the database (trigger
+      // link_pet_status_to_application): approved -> pending, and back to
+      // available only when an approved application is rejected. Staff mark
+      // the pet adopted in Pet records once it goes home.
 
       if (selectedApp && selectedApp.id === appId) {
         setSelectedApp((prev) => prev ? {

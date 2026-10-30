@@ -187,10 +187,10 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
         (_pet['weight'] ??
                 (_pet['weight_kg'] != null
                     ? '${_pet['weight_kg']} kg'
-                    : 'Normal'))
+                    : 'Not recorded'))
             .toString();
     final String size = (_pet['size'] ?? 'Medium').toString();
-    final String coatColor = (_pet['color'] ?? _pet['coatColor'] ?? 'Mixed')
+    final String coatColor = (_pet['color'] ?? _pet['coatColor'] ?? 'Not recorded')
         .toString();
 
     final String rawVaccinationStatus =
