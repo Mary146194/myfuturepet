@@ -120,7 +120,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       _formatRelativeTime(item.createdAt),
                       style: const TextStyle(
                         color: mutedText,
-                        fontSize: 11.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -217,7 +217,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           'Notifications & Alerts',
           style: TextStyle(
             color: darkText,
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -299,7 +299,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 'You have $unreadCount unread ${unreadCount == 1 ? 'broadcast' : 'broadcasts'} from Jagna Shelter.',
                                 style: const TextStyle(
                                   color: Color(0xFF8C2B11),
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -389,7 +389,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               : (label == 'Updates' ? 'Updates 🐾' : label),
           style: TextStyle(
             color: isSelected ? Colors.white : darkText,
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
           ),
         ),
@@ -461,7 +461,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: item.isBroadcast
                                 ? const Color(0xFFFFF5F2)
@@ -472,7 +472,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             item.isBroadcast ? 'Shelter Broadcast' : 'Update',
                             style: TextStyle(
                               color: item.isBroadcast ? primaryColor : tealColor,
-                              fontSize: 9.5,
+                              fontSize: 9,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -508,7 +508,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: darkText,
-                        fontSize: 13.5,
+                        fontSize: 13,
                         fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
                         height: 1.3,
                       ),
@@ -576,7 +576,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               'No notifications yet',
               style: TextStyle(
                 color: darkText,
-                fontSize: 17,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -586,7 +586,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: mutedText,
-                fontSize: 12.5,
+                fontSize: 12,
                 height: 1.5,
               ),
             ),

@@ -93,7 +93,7 @@ class _MyAppointmentsScreenState
           'My Appointments',
           style: TextStyle(
             color: darkText,
-            fontSize: 19,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -158,7 +158,7 @@ class _MyAppointmentsScreenState
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: darkText,
-                fontSize: 21,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -464,7 +464,7 @@ class _MyAppointmentsScreenState
                       ),
                     ),
 
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
 
                     Text(
                       petName,
@@ -475,7 +475,7 @@ class _MyAppointmentsScreenState
                       ),
                     ),
 
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
 
                     Text(
                       '$breed${age.isNotEmpty ? ' • $age' : ''}',
@@ -507,7 +507,7 @@ class _MyAppointmentsScreenState
                   }
                   return Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
+                      horizontal: 8,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
@@ -913,7 +913,7 @@ class _MyAppointmentsScreenState
                                 ),
                               ),
 
-                              const SizedBox(height: 3),
+                              const SizedBox(height: 4),
 
                               Text(
                                 petName,
@@ -1075,7 +1075,7 @@ class _MyAppointmentsScreenState
                   ),
                 ),
 
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
 
                 Text(
                   value,

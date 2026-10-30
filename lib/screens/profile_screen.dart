@@ -242,7 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                   ),
-                  const SizedBox(width: 9),
+                  const SizedBox(width: 8),
                   Text(
                     'Profile',
                     style: TextStyle(
@@ -361,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 8),
 
                       // Saved Pets
                       ValueListenableBuilder<int>(
@@ -392,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 8),
 
                       // My Appointments
                       _buildActivityCard(
@@ -544,7 +544,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
             userRole,
             textAlign: TextAlign.center,
@@ -701,7 +701,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                  if (count > 0 && status != null) const SizedBox(height: 5),
+                  if (count > 0 && status != null) const SizedBox(height: 4),
                   if (status != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -868,7 +868,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'Edit Profile',
                 style: TextStyle(
                   color: dialogText,
-                  fontSize: 19,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -947,7 +947,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.all(5),
+                            padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
                               color: Color(0xFFA94327),
                               shape: BoxShape.circle,
@@ -1123,7 +1123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'Logout',
             style: TextStyle(
               color: dialogText,
-              fontSize: 19,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),

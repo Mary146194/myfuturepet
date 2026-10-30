@@ -166,7 +166,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                               'Jagna Animal Lover & Rescue',
                               style: TextStyle(
                                 color: textCol,
-                                fontSize: 15,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -175,7 +175,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                               'Jagna, Bohol, Philippines',
                               style: TextStyle(
                                 color: subTextCol,
-                                fontSize: 12.5,
+                                fontSize: 12,
                               ),
                             ),
                           ],
@@ -249,7 +249,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                           item['question']!,
                           style: TextStyle(
                             color: textCol,
-                            fontSize: 13.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -291,7 +291,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           title,
           style: TextStyle(
             color: textColor,
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),

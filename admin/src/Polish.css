@@ -1,0 +1,49 @@
+/* Last layer: one brand face (Manrope, same as the app and public site), steady rhythm, quiet motion. */
+:root {
+  --mfp-ease: cubic-bezier(.22, 1, .36, 1);
+  --mfp-space-1: 4px; --mfp-space-2: 8px; --mfp-space-3: 12px; --mfp-space-4: 16px;
+  --mfp-space-6: 24px; --mfp-space-8: 32px;
+}
+
+body,
+.dashboard-container,
+.app-session-loading,
+.app-access-denied { font-family: 'Manrope', 'Segoe UI', sans-serif; font-optical-sizing: auto; text-rendering: optimizeLegibility; }
+
+.dashboard-container :is(h1, h2, h3) { text-wrap: balance; }
+.dashboard-container p { text-wrap: pretty; }
+/* Counts line up when they change. */
+.dashboard-container :is(.overview-metric, .stat-card, .metric-value, table) { font-variant-numeric: tabular-nums; }
+
+/* One gutter for the workspace: 32 desktop, 24 tablet, 16 phone. */
+.dashboard-container .main-area { padding: var(--mfp-space-8); }
+.dashboard-container .topbar { padding-bottom: var(--mfp-space-6); margin-bottom: var(--mfp-space-6); }
+@media (max-width: 799px) { .dashboard-container .main-area { padding: var(--mfp-space-6); } }
+@media (max-width: 599px) { .dashboard-container .main-area { padding: var(--mfp-space-6) var(--mfp-space-4); } }
+
+/* Each page settles in on open. Only opacity/transform (compositor-only), and
+   fill-mode backwards so no transform lingers to trap fixed-position modals. */
+@keyframes mfp-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.dashboard-container .content-area > * > * { animation: mfp-rise .5s var(--mfp-ease) backwards; }
+.dashboard-container .content-area > * > *:nth-child(2) { animation-delay: 60ms; }
+.dashboard-container .content-area > * > *:nth-child(3) { animation-delay: 120ms; }
+.dashboard-container .content-area > * > *:nth-child(4) { animation-delay: 180ms; }
+.dashboard-container .content-area > * > *:nth-child(n+5) { animation-delay: 240ms; }
+.dashboard-container .greeting h1 { animation: mfp-rise .45s var(--mfp-ease) backwards; }
+
+.dashboard-container :is(.stat-card, .overview-metric, .visual-card, .work-panel, .pet-card) {
+  transition: transform .28s var(--mfp-ease), box-shadow .28s var(--mfp-ease), background-color .2s ease;
+}
+@media (hover: hover) {
+  .dashboard-container :is(.stat-card, .visual-card, .pet-card):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -14px rgba(64, 38, 20, .28);
+  }
+}
+.dashboard-container .menu-item { transition: background-color .2s ease, color .2s ease, transform .2s var(--mfp-ease); }
+.dashboard-container .menu-item:active { transform: scale(.98); }
+.dashboard-container :is(button, a, input, select, textarea):focus-visible { outline: 2px solid #b64724; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-container *, .dashboard-container *::before, .dashboard-container *::after { animation: none !important; transition: none !important; }
+}

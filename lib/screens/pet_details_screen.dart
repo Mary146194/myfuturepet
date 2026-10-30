@@ -329,7 +329,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 7,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             color: tealColor,
@@ -353,7 +353,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 7),
+                              const SizedBox(width: 8),
                               Text(
                                 isAvailable
                                     ? 'Available for Free Adoption'
@@ -362,7 +362,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                           : 'Adoption Pending'),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.2,
                                 ),
@@ -426,7 +426,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
-                                vertical: 5,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
                                 color: isFemale
@@ -481,7 +481,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                           : (isDark
                                                 ? const Color(0xFF38BDF8)
                                                 : const Color(0xFF0284C7)),
-                                      fontSize: 12.5,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -515,7 +515,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                               size: 16,
                               color: Color(0xFFB85D3B),
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 location,
@@ -554,7 +554,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                 icon: Icons.cake_outlined,
                                 iconColor: tealColor,
                                 iconBg: const Color(0xFFE5F8F6),
-                                value: age,
+                                // The label already says Age; the long fallback truncated.
+                                value: age == 'Age unknown' ? 'Unknown' : age,
                                 label: 'Age',
                               ),
                             ),
@@ -747,7 +748,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                         'Personality',
                         style: TextStyle(
                           color: isDark ? const Color(0xFFF8FAFC) : darkText,
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -810,12 +811,12 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                         'About $name',
                         style: TextStyle(
                           color: isDark ? const Color(0xFFF8FAFC) : darkText,
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
 
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 8),
 
                       Text(
                         (_pet['about'] ??
@@ -953,7 +954,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                                         ? 'Already Adopted'
                                         : 'Adoption Pending'),
                               style: const TextStyle(
-                                fontSize: 15,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -1006,7 +1007,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             ),
             child: Icon(icon, size: 18, color: iconColor),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 8),
           Text(
             value,
             maxLines: 1,
@@ -1014,7 +1015,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: isDark ? const Color(0xFFF8FAFC) : darkText,
-              fontSize: 13.5,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -1200,7 +1201,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: isDark
             ? tealColor.withValues(alpha: 0.18)
@@ -1221,12 +1222,12 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             size: 14,
             color: isDark ? const Color(0xFF2DD4BF) : tealColor,
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
               color: isDark ? const Color(0xFF2DD4BF) : const Color(0xFF134E48),
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1288,7 +1289,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                     color: isDark
                         ? const Color(0xFFF8FAFC)
                         : const Color(0xFF425257),
-                    fontSize: 11.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     height: 1.3,
                   ),
@@ -1382,7 +1383,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 18, color: contentColor),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   label,
@@ -1391,7 +1392,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: contentColor,
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

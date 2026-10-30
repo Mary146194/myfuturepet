@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -53,6 +54,21 @@ Future<void> main() async {
   }
 }
 
+// Manrope is already wide; default M3 tracking makes body text look loose.
+const _textTheme = TextTheme(
+  bodyLarge: TextStyle(letterSpacing: 0.1),
+  bodyMedium: TextStyle(letterSpacing: 0),
+  bodySmall: TextStyle(letterSpacing: 0.1),
+  labelLarge: TextStyle(letterSpacing: 0.1),
+);
+
+final _pageTransitions = PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+  },
+);
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -68,6 +84,9 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.light,
+            fontFamily: 'Manrope',
+            textTheme: _textTheme,
+            pageTransitionsTheme: _pageTransitions,
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFFA94327),
               brightness: Brightness.light,
@@ -83,6 +102,9 @@ class MyApp extends StatelessWidget {
           darkTheme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.dark,
+            fontFamily: 'Manrope',
+            textTheme: _textTheme,
+            pageTransitionsTheme: _pageTransitions,
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFFA94327),
               brightness: Brightness.dark,

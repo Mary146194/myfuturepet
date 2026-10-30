@@ -544,7 +544,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     ),
                     subtitle: Text(
                       userEmail,
-                      style: TextStyle(color: subTextCol, fontSize: 12.5),
+                      style: TextStyle(color: subTextCol, fontSize: 12),
                     ),
                   ),
                   Divider(height: 1, color: borderCol),
@@ -578,7 +578,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     ),
                     subtitle: Text(
                       'Update your account password',
-                      style: TextStyle(color: subTextCol, fontSize: 12.5),
+                      style: TextStyle(color: subTextCol, fontSize: 12),
                     ),
                     trailing: Icon(Icons.chevron_right, color: subTextCol),
                     onTap: _showChangePasswordDialog,
@@ -742,7 +742,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           title,
           style: TextStyle(
             color: textCol,
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),

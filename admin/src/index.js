@@ -5,6 +5,8 @@ import App from './App';
 import { BrowserRouter } from 'react-router-dom';
 import './AdminTheme.css';
 import './WorkspaceDesign.css';
+import './pages/PublicTypography.css';
+import './Polish.css';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

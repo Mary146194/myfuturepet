@@ -22,8 +22,8 @@
   color: #777;
   font-size: 14px;
   margin-top: 0;
-  margin-bottom: 25px;
-  padding-bottom: 15px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
   border-bottom: 2px solid #FF6B35;
 }
 
@@ -99,7 +99,7 @@
 
 .chip-count {
   display: inline-block;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
@@ -114,7 +114,7 @@
 .refresh-users-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   padding: 8px 16px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -153,13 +153,13 @@
   position: absolute;
   left: 14px;
   color: #94a3b8;
-  font-size: 17px;
+  font-size: 18px;
   pointer-events: none;
 }
 
 .search-input-wrapper input {
   width: 100%;
-  padding: 11px 38px 11px 40px;
+  padding: 12px 38px 12px 40px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
@@ -468,7 +468,7 @@
 
 .modal-btn-cancel {
   flex: 1;
-  padding: 11px;
+  padding: 12px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
@@ -485,7 +485,7 @@
 
 .modal-btn-confirm {
   flex: 1;
-  padding: 11px;
+  padding: 12px;
   border-radius: 12px;
   border: none;
   font-size: 13.5px;

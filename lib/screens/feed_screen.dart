@@ -264,7 +264,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     Text(
                       'Category',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade700,
                       ),
@@ -391,7 +391,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               )
                             : const Text(
                                 'Publish Post',
-                                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
@@ -771,7 +771,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       Text(
                         timeAgo,
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade500,
                         ),
                       ),
@@ -805,7 +805,7 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Text(
               content,
               style: TextStyle(
-                fontSize: 13.5,
+                fontSize: 13,
                 height: 1.45,
                 color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
               ),
@@ -841,7 +841,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         _formatCount(likes),
                         style: TextStyle(
                           color: isLiked ? Colors.red : (isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600),
-                          fontSize: 12.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -867,7 +867,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         _formatCount(comments),
                         style: TextStyle(
                           color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
-                          fontSize: 12.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1079,7 +1079,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                           'No comments yet. Start the conversation!',
                           style: TextStyle(
                             color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade500,
-                            fontSize: 13.5,
+                            fontSize: 13,
                           ),
                         ),
                       )
@@ -1131,11 +1131,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                                           name,
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 12.5,
+                                            fontSize: 12,
                                             color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
                                           ),
                                         ),
-                                        const SizedBox(height: 3),
+                                        const SizedBox(height: 4),
                                         Text(
                                           content,
                                           style: TextStyle(
@@ -1166,10 +1166,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 Expanded(
                   child: TextField(
                     controller: _commentCtrl,
-                    style: TextStyle(color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B), fontSize: 13.5),
+                    style: TextStyle(color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B), fontSize: 13),
                     decoration: InputDecoration(
                       hintText: 'Add a comment...',
-                      hintStyle: TextStyle(color: isDark ? const Color(0xFF64748B) : Colors.grey.shade400, fontSize: 13.5),
+                      hintStyle: TextStyle(color: isDark ? const Color(0xFF64748B) : Colors.grey.shade400, fontSize: 13),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       filled: true,
                       fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),

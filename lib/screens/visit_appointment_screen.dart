@@ -353,7 +353,7 @@ Future<void> _confirmAppointment() async {
               'Done',
               style: TextStyle(
                 color: primaryColor,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -505,7 +505,7 @@ Future<void> _confirmAppointment() async {
                 //       child: Text(
                 //         'My Future Pet',
                 //         style: TextStyle(
-                //           fontSize: 21,
+                //           fontSize: 20,
                 //           fontWeight: FontWeight.bold,
                 //           color: primaryColor,
                 //         ),
@@ -576,13 +576,13 @@ Future<void> _confirmAppointment() async {
                           Text(
                             widget.pet['name'] ?? 'Pet',
                             style: TextStyle(
-                              fontSize: 21,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: primaryColor,
                             ),
                           ),
 
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
 
                           Row(
                             children: [
@@ -592,7 +592,7 @@ Future<void> _confirmAppointment() async {
                                 color: Colors.grey.shade600,
                               ),
 
-                              const SizedBox(width: 3),
+                              const SizedBox(width: 4),
 
                               Expanded(
                                 child: Text(
@@ -751,7 +751,7 @@ Future<void> _confirmAppointment() async {
                                     type,
 
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 14,
 
                                       fontWeight:
                                           isSelected
@@ -1226,7 +1226,7 @@ Future<void> _confirmAppointment() async {
                           _booking ? 'Sending...' : 'Request Appointment',
 
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
 
                             fontWeight:
                                 FontWeight.w600,
@@ -1240,7 +1240,7 @@ Future<void> _confirmAppointment() async {
                           ),
                         ),
 
-                        const SizedBox(width: 7),
+                        const SizedBox(width: 8),
 
                         Icon(
                           Icons
@@ -1412,7 +1412,7 @@ Future<void> _confirmAppointment() async {
                 ),
               ),
 
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
 
               Text(
                 value,

@@ -91,7 +91,7 @@ class _MyApplicationsScreenState
           'My Applications',
           style: TextStyle(
             color: darkText,
-            fontSize: 19,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -156,7 +156,7 @@ class _MyApplicationsScreenState
 
               style: TextStyle(
                 color: darkText,
-                fontSize: 21,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -526,7 +526,7 @@ class _MyApplicationsScreenState
                       style:
                           const TextStyle(
                         color: darkText,
-                        fontSize: 19,
+                        fontSize: 18,
                         fontWeight:
                             FontWeight.w800,
                       ),
@@ -548,7 +548,7 @@ class _MyApplicationsScreenState
                       ),
                     ),
 
-                    const SizedBox(height: 9),
+                    const SizedBox(height: 8),
 
                     // STATUS
                     Builder(
@@ -569,7 +569,7 @@ class _MyApplicationsScreenState
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
-                              vertical: 5,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: badgeBg,
@@ -627,7 +627,7 @@ class _MyApplicationsScreenState
                           'Application Approved! 🎉',
                           style: TextStyle(
                             color: Color(0xFF1B5E20),
-                            fontSize: 12.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -648,7 +648,7 @@ class _MyApplicationsScreenState
                     icon: const Icon(Icons.calendar_month, size: 14),
                     label: const Text(
                       'Book Visit',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF008F82),
@@ -688,7 +688,7 @@ class _MyApplicationsScreenState
                       'Shelter Note: ${application['reviewNotes']}',
                       style: const TextStyle(
                         color: Color(0xFF4B5563),
-                        fontSize: 11.5,
+                        fontSize: 11,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -793,7 +793,7 @@ class _MyApplicationsScreenState
                         ),
                       ),
 
-                      SizedBox(width: 5),
+                      SizedBox(width: 4),
 
                       Icon(
                         Icons
@@ -986,7 +986,7 @@ class ApplicationDetailsScreen
           'Application Details',
           style: TextStyle(
             color: darkText,
-            fontSize: 19,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1095,7 +1095,7 @@ class ApplicationDetailsScreen
                           style:
                               const TextStyle(
                             color: darkText,
-                            fontSize: 21,
+                            fontSize: 20,
                             fontWeight:
                                 FontWeight.w800,
                           ),
@@ -1448,7 +1448,7 @@ class ApplicationDetailsScreen
                   style:
                       const TextStyle(
                     color: darkText,
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight:
                         FontWeight.w700,
                   ),
@@ -1464,7 +1464,7 @@ class ApplicationDetailsScreen
               return Padding(
                 padding:
                     const EdgeInsets.only(
-                  bottom: 7,
+                  bottom: 8,
                 ),
 
                 child: Text(

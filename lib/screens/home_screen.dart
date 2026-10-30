@@ -214,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
 
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
         decoration: BoxDecoration(
           color: selected ? selectedBg : Colors.transparent,
@@ -436,14 +436,14 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             ),
           ),
 
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
 
           const Expanded(
             child: Text(
               'My Future Pet',
               style: TextStyle(
                 color: primaryColor,
-                fontSize: 19,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -958,7 +958,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                       const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
+                          horizontal: 8,
                           vertical: 2.5,
                         ),
                         decoration: BoxDecoration(
@@ -977,7 +977,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
 
                   // Breed
                   Text(
@@ -991,7 +991,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 8),
 
                   // Action Row: Available Pill + Meet Me Button
                   Row(
@@ -1018,12 +1018,12 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                               color: Color(0xFF2DD4BF),
                               size: 11,
                             ),
-                            const SizedBox(width: 3),
+                            const SizedBox(width: 4),
                             Text(
                               (pet['status'] ?? 'Available').toString(),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 9.5,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1045,7 +1045,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
+                            horizontal: 8,
                             vertical: 4.5,
                           ),
                           decoration: BoxDecoration(
@@ -1072,7 +1072,7 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(width: 3),
+                              SizedBox(width: 4),
                               Icon(
                                 Icons.arrow_forward_rounded,
                                 color: Colors.white,

@@ -408,7 +408,7 @@ class _SavedPetsScreenState
                       'Tip: Tap the heart icon on any pet card to save them to your favorites list.',
                       style: TextStyle(
                         color: Color(0xFF6B7280),
-                        fontSize: 11.5,
+                        fontSize: 11,
                       ),
                     ),
                   ),
@@ -587,7 +587,7 @@ class _SavedPetsScreenState
                         style:
                             const TextStyle(
                           color: darkText,
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight:
                               FontWeight.bold,
                         ),

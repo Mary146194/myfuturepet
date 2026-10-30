@@ -274,7 +274,7 @@ void dispose() {
             ),
           ),
 
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
 
           // APP NAME
           const Expanded(
@@ -282,7 +282,7 @@ void dispose() {
               'My Future Pet',
               style: TextStyle(
                 color: primaryColor,
-                fontSize: 19,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -414,7 +414,7 @@ void dispose() {
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: 3,
+              horizontal: 4,
             ),
             child: GestureDetector(
               onTap: () {
@@ -496,7 +496,7 @@ void dispose() {
             },
           ),
 
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
 
           _buildSmallFilter(
             label: selectedAge == 'Any Age'
@@ -523,7 +523,7 @@ void dispose() {
             },
           ),
 
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
 
           _buildSmallFilter(
             label: selectedGender == 'Any Gender'
@@ -549,7 +549,7 @@ void dispose() {
             },
           ),
 
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
 
           _buildSmallFilter(
             label: selectedStatus == 'All Status'
@@ -575,7 +575,7 @@ void dispose() {
             },
           ),
 
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
 
           _buildClearFilterButton(),
         ],
@@ -630,7 +630,7 @@ void dispose() {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 3),
+            const SizedBox(width: 4),
             Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 15,
@@ -1067,7 +1067,7 @@ void dispose() {
                             borderRadius: BorderRadius.circular(50),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
+                                horizontal: 8,
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
@@ -1347,7 +1347,7 @@ void dispose() {
               padding:
                   const EdgeInsets.fromLTRB(
                 11,
-                9,
+                8,
                 11,
                 10,
               ),
@@ -1425,7 +1425,7 @@ void dispose() {
       padding:
           const EdgeInsets.symmetric(
         horizontal: 8,
-        vertical: 5,
+        vertical: 4,
       ),
       decoration: BoxDecoration(
         color: isDark
@@ -1449,7 +1449,7 @@ void dispose() {
             size: 11,
             color: isDark ? const Color(0xFF2DD4BF) : tealColor,
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
@@ -1507,7 +1507,7 @@ void dispose() {
             ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
 
           Text(
             'Try another search or change your filters.',
@@ -1626,7 +1626,7 @@ void dispose() {
                     'Filter by $title',
                     style: TextStyle(
                       color: isDark ? const Color(0xFFF8FAFC) : darkText,
-                      fontSize: 19,
+                      fontSize: 18,
                       fontWeight:
                           FontWeight.bold,
                     ),

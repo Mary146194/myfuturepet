@@ -230,7 +230,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                         const Text(
                           'AR Display Options',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: darkText,
                           ),
@@ -238,7 +238,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                         Text(
                           'View $_petName in physical space or 3D showroom',
                           style: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 12,
                             color: Color(0xFF757575),
                           ),
                         ),
@@ -299,7 +299,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                                 SizedBox(width: 6),
                               ],
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 4),
                             Text(
                               'Overlay the 3D model on a camera preview or virtual floor room.',
                               style: TextStyle(
@@ -353,11 +353,11 @@ class _ARViewScreenState extends State<ARViewScreen>
                                 color: darkText,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 4),
                             Text(
                               'High-contrast 360° rotation booth for detailed inspection of fur textures and body build.',
                               style: TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -1389,7 +1389,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                           'Drag to Move',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 9.5,
+                            fontSize: 9,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1426,7 +1426,7 @@ class _ARViewScreenState extends State<ARViewScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.straighten, color: Colors.white, size: 12),
-            const SizedBox(width: 5),
+            const SizedBox(width: 4),
             Text(
               _arSupport == ArSupport.supported
                   ? _heightLabel
@@ -1449,7 +1449,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -1507,7 +1507,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
         // Mode switch tabs: Camera AR vs 3D Studio
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(30),
@@ -1590,7 +1590,7 @@ class _ARViewScreenState extends State<ARViewScreen>
               title,
               style: TextStyle(
                 color: isSelected ? Colors.white : darkText,
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
               ),
             ),
@@ -1671,7 +1671,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.70),
         borderRadius: BorderRadius.circular(24),
@@ -1707,7 +1707,7 @@ class _ARViewScreenState extends State<ARViewScreen>
               statusText,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
               ),
@@ -1737,7 +1737,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   Widget _buildDistanceSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.70),
         borderRadius: BorderRadius.circular(18),
@@ -1781,7 +1781,7 @@ class _ARViewScreenState extends State<ARViewScreen>
 
   Widget _buildStudioScaleIndicator() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.70),
         borderRadius: BorderRadius.circular(18),
@@ -1812,7 +1812,7 @@ class _ARViewScreenState extends State<ARViewScreen>
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF008F82) : Colors.white12,
           borderRadius: BorderRadius.circular(10),
@@ -1821,7 +1821,7 @@ class _ARViewScreenState extends State<ARViewScreen>
           label,
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.white70,
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -2141,7 +2141,7 @@ class _ARViewScreenState extends State<ARViewScreen>
                   _petName,
                   style: const TextStyle(
                     color: darkText,
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -2156,7 +2156,7 @@ class _ARViewScreenState extends State<ARViewScreen>
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: _isPetPlaced
                   ? const Color(0xFFE8F5E9)
@@ -2224,7 +2224,7 @@ class _ARViewScreenState extends State<ARViewScreen>
             ],
           ),
           child: Container(
-            margin: const EdgeInsets.all(3),
+            margin: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: _isPetPlaced ? primaryColor : const Color(0xFF078F80),

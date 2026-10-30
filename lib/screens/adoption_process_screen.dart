@@ -166,7 +166,7 @@ class _AdoptionProcessScreenState
           'Adoption Application',
           style: TextStyle(
             color: darkText,
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -205,7 +205,7 @@ class _AdoptionProcessScreenState
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 5,
+                      vertical: 4,
                     ),
 
                     decoration: BoxDecoration(
@@ -297,7 +297,7 @@ class _AdoptionProcessScreenState
                 height: 5,
 
                 margin: EdgeInsets.only(
-                  right: index == 5 ? 0 : 5,
+                  right: index == 4 ? 0 : 4,
                 ),
 
                 decoration: BoxDecoration(
@@ -730,7 +730,7 @@ class _AdoptionProcessScreenState
 
           const Expanded(
             child: Padding(
-              padding: EdgeInsets.only(top: 3),
+              padding: EdgeInsets.only(top: 4),
 
               child: Text(
                 'I understand that adopting a pet is a long-term responsibility and I agree to provide proper care, food, shelter, veterinary care, and a safe environment.',
@@ -890,7 +890,7 @@ class _AdoptionProcessScreenState
           ),
         ),
 
-        const SizedBox(height: 7),
+        const SizedBox(height: 8),
 
         Container(
           decoration: BoxDecoration(
@@ -970,7 +970,7 @@ class _AdoptionProcessScreenState
           ),
         ),
 
-        const SizedBox(height: 7),
+        const SizedBox(height: 8),
 
         Container(
           height: 54,
@@ -1098,7 +1098,7 @@ class _AdoptionProcessScreenState
                   ),
                 ),
 
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
 
                 Text(
                   description,
@@ -1204,7 +1204,7 @@ class _AdoptionProcessScreenState
                   name,
                   style: const TextStyle(
                     color: darkText,
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight:
                         FontWeight.w800,
                   ),
@@ -1290,7 +1290,7 @@ class _AdoptionProcessScreenState
                   title,
                   style: const TextStyle(
                     color: darkText,
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight:
                         FontWeight.w700,
                   ),
@@ -2158,7 +2158,7 @@ class _AdoptionProcessScreenState
             'Exit Application?',
             style: TextStyle(
               color: darkText,
-              fontSize: 19,
+              fontSize: 18,
               fontWeight:
                   FontWeight.w700,
             ),

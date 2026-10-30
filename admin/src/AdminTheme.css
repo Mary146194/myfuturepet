@@ -15,7 +15,7 @@
 .dashboard-container .sidebar-footer{border-top:1px solid var(--admin-border);color:var(--admin-muted)}
 .dashboard-container .main-area{background:#f7f5f2;min-width:0}
 .dashboard-container .topbar{background:transparent;border:0;border-bottom:1px solid var(--admin-border);border-radius:0;box-shadow:none;padding:0 0 24px;gap:18px}
-.dashboard-container .greeting h1{font-size:26px;font-weight:650;letter-spacing:-.9px;color:#29231f}
+.dashboard-container .greeting h1{font-size:28px;font-weight:650;letter-spacing:-.9px;color:#29231f}
 .dashboard-container .greeting p{color:var(--admin-muted);font-size:12px;line-height:1.6;white-space:normal}
 .dashboard-container .collapse-toggle{background:#fff;border:1px solid var(--admin-border);box-shadow:none;border-radius:7px;color:#766354}
 .dashboard-container .avatar{background:var(--admin-accent);border-radius:10px;box-shadow:none}
@@ -28,7 +28,7 @@
 .dashboard-container .stat-card{padding:24px 20px;flex-direction:column;gap:16px;position:relative;overflow:hidden;border-top:3px solid #dc7b4c}
 .dashboard-container .stat-label{font-size:11px;letter-spacing:.6px;color:var(--admin-muted)}
 .dashboard-container :is(.card-top) {padding-bottom:20px;border-bottom:1px solid #f0eae4}
-.dashboard-container :is(.card-top) h3 {font-size:17px;font-weight:650}
+.dashboard-container :is(.card-top) h3 {font-size:18px;font-weight:650}
 .dashboard-container :is(.card-top) p {color:var(--admin-muted);font-size:12px}
 .dashboard-container :is(.pet-controls-bar,.appt-controls-bar,.controls,.posts-summary-ribbon) {background:#fff;border:1px solid var(--admin-border);border-radius:8px;box-shadow:none;padding:16px}
 .adoptions-table-container,.users-table-container {border:1px solid var(--admin-border);border-radius:10px;box-shadow:none;background:#fff;overflow-x:auto}
@@ -48,7 +48,7 @@
 .dashboard-container .pet-card-actions{border-top:1px solid var(--admin-border);padding-top:18px}
 .dashboard-container .post-card-header{padding:20px}
 .dashboard-container .author-avatar{border-radius:9px}
-.dashboard-container .announcement-title{font-size:17px}
+.dashboard-container .announcement-title{font-size:18px}
 .dashboard-container :is(button,a,input,select,textarea):focus-visible {outline:3px solid #d88b58;outline-offset:3px}
 .dashboard-container button:disabled{cursor:not-allowed;opacity:.55}
 .dashboard-container button:active:not(:disabled){transform:translateY(1px)}

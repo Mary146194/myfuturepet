@@ -13,9 +13,9 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 25px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 16px;
 }
 
 .logs-header h2 {
@@ -221,7 +221,7 @@
 
 .search-input {
   width: 100%;
-  padding: 11px 40px 11px 40px;
+  padding: 12px 40px 12px 40px;
   border-radius: 12px;
   border: 1px solid #e3ded9;
   background: #ffffff;
@@ -411,7 +411,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   transition: all 0.2s ease;
 }
 
@@ -476,7 +476,7 @@
 }
 
 .shield-icon {
-  font-size: 26px;
+  font-size: 28px;
   color: #FF6B35;
 }
 
