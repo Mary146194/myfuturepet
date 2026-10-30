@@ -385,6 +385,14 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                   const SizedBox(height: 8),
 
                   _buildFeaturedPets(),
+
+                  const SizedBox(height: 16),
+
+                  _sectionTitle(context, 'All Available Pets'),
+
+                  const SizedBox(height: 8),
+
+                  _buildRecommendedPets(),
                 ],
               ),
             ),
@@ -1085,6 +1093,306 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                     ],
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // ALL AVAILABLE PETS (GRID)
+  // ============================================================
+
+  Widget _buildRecommendedPets() {
+    if (_loadingPets || _petLoadFailed) return const SizedBox.shrink();
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: _homePets,
+      builder: (context, livePets, child) {
+        final isDark = ThemeService.isDarkMode(context);
+        final pets = livePets
+            .where(
+              (p) =>
+                  (p['status'] ?? '').toString().toLowerCase() == 'available',
+            )
+            .toList();
+
+        if (pets.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 36),
+            alignment: Alignment.center,
+            child: Text(
+              'No pets currently available for adoption',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
+                fontSize: 14,
+              ),
+            ),
+          );
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: pets.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.72,
+          ),
+          itemBuilder: (context, index) {
+            return _recommendedCard(context, pets[index], index);
+          },
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // AVAILABLE PET CARD
+  // ============================================================
+
+  Widget _recommendedCard(
+    BuildContext context,
+    Map<String, dynamic> pet,
+    int index,
+  ) {
+    final isFemale = _isFemale(pet);
+
+    final isDark = ThemeService.isDarkMode(context);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => PetDetailsScreen(pet: pet)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2EAF0),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Image with Overlays
+            AspectRatio(
+              aspectRatio: 1.15,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    pet['image'].toString(),
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFE2E8F0),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: isDark
+                            ? const Color(0xFF0F172A)
+                            : const Color(0xFFF1F5F9),
+                        child: const Icon(
+                          Icons.pets,
+                          color: primaryColor,
+                          size: 38,
+                        ),
+                      );
+                    },
+                  ),
+
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _buildFavoriteButton(pet),
+                  ),
+
+                  // Bottom-Left Overlay on Image: Gender + Age pill
+                  Positioned(
+                    left: 8,
+                    bottom: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.68),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${isFemale ? '♀' : '♂'} ${isFemale ? 'Female' : 'Male'} • ${pet['age'] ?? ''}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Bottom White Info Area
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Pet Name + Verified Check Badge
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                pet['name'].toString(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : const Color(0xFF0F2830),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.15,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF009688),
+                              size: 14,
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        // Breed
+                        Text(
+                          '${pet['type'] == 'cat' ? 'Cat' : 'Dog'} • ${pet['breed'] ?? 'Unknown Breed'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        // Personality Highlight Tagline (Teal)
+                        Text(
+                          (pet['temperament'] ?? '').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF008F82),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Bottom Row: Status Badge + Meet [Name] › Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF008F82).withValues(alpha: 0.2)
+                                : const Color(0xFFE8F7F5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            (pet['status'] ?? 'Available').toString(),
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF2DD4BF)
+                                  : const Color(0xFF00796B),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PetDetailsScreen(pet: pet),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Meet ${pet['name']} ›',
+                            style: const TextStyle(
+                              color: Color(0xFFA94327),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
