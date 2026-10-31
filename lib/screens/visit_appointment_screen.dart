@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../adoption_journey.dart';
 import '../appointment_store.dart';
 import '../appointment_schedule.dart';
+import '../services/adoption_journey_service.dart';
 import '../services/appointment_service.dart';
 
 // ============================================================
@@ -11,13 +13,38 @@ class VisitAppointmentScreen extends StatefulWidget {
   final Map<String, dynamic> pet;
   final AppointmentService? appointmentService;
   final DateTime Function()? now;
+  final String initialAppointmentType;
 
   const VisitAppointmentScreen({
     super.key,
     required this.pet,
     this.appointmentService,
     this.now,
+    this.initialAppointmentType = 'Shelter Visit',
   });
+
+  /// Book the meet & greet for an approved adoption (journey stage 3).
+  /// Shared by Profile, My Applications and Application Details.
+  static Future<void> openMeetAndGreet(
+    BuildContext context,
+    AdoptionJourney journey,
+  ) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VisitAppointmentScreen(
+          pet: {
+            'id': journey.petId,
+            'name': journey.petName,
+            'image': journey.petImage,
+            'shelter_id': journey.shelterId,
+          },
+          initialAppointmentType: 'Meet and Greet',
+        ),
+      ),
+    );
+    await AdoptionJourneyService().refresh();
+  }
 
   @override
   State<VisitAppointmentScreen> createState() =>
@@ -41,7 +68,7 @@ class _VisitAppointmentScreenState
   // APPOINTMENT DATA
   // ============================================================
 
-  String selectedAppointmentType = 'Shelter Visit';
+  late String selectedAppointmentType = widget.initialAppointmentType;
 
   late DateTime selectedDate;
 
@@ -281,6 +308,8 @@ Future<void> _confirmAppointment() async {
         : 'Could not request your visit. Please check your connection and try again.');
     return;
   }
+  // A meet & greet request moves the adoption journey; resync it.
+  AdoptionJourneyService().refresh();
   if (!mounted) return;
   setState(() => _booking = false);
 

@@ -4,6 +4,7 @@ import '../pet_data.dart';
 import '../saved_pet_store.dart';
 import '../services/favorites_service.dart';
 import '../widgets/app_brand_title.dart';
+import '../widgets/match_badge.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
 import 'notifications_screen.dart';
@@ -955,6 +956,17 @@ void dispose() {
                       ),
                     ),
                   ),
+
+                  // ==================================================
+                  // PET MATCHER SCORE (after the quiz)
+                  // ==================================================
+
+                  if (isAvailable)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: MatchBadge(pet: pet),
+                    ),
 
                   // ==================================================
                   // STATUS

@@ -53,6 +53,8 @@ void main() {
   };
 
   setUp(() {
+    // Fixture visits are on 2026-10-20; keep them upcoming.
+    AppointmentStore.clock = () => DateTime.utc(2026, 10, 20);
     client = SupabaseClient('http://localhost', 'local-test-key');
     service = FixtureAppointmentService(client);
     service.book = () async => Map.of(row);
@@ -60,6 +62,7 @@ void main() {
     AppointmentStore.clearAppointments();
   });
   tearDown(() async {
+    AppointmentStore.clock = DateTime.now;
     await client.dispose();
     AppointmentStore.clearAppointments();
   });

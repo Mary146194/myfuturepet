@@ -54,11 +54,7 @@ class AppointmentStore {
       final rows = await (service ?? AppointmentService()).fetchMyAppointments(
         throwOnError: true,
       );
-      // Build before replacing so malformed/network responses cannot erase data.
-      final fetched = rows.map(_fromRow).toList();
-      appointments
-        ..clear()
-        ..addAll(fetched);
+      applyRows(rows);
     } catch (e) {
       debugPrint('Error syncing appointments with Supabase: $e');
       if (throwOnError) rethrow;
@@ -66,11 +62,71 @@ class AppointmentStore {
     return appointments;
   }
 
+  /// Replace the list from raw `appointments` rows. Built before replacing so
+  /// a malformed response cannot erase data. Also fed by
+  /// AdoptionJourneyService so realtime updates reach My Appointments.
+  static void applyRows(List<Map<String, dynamic>> rows) {
+    final fetched = rows.map(_fromRow).toList();
+    appointments
+      ..clear()
+      ..addAll(fetched);
+  }
+
   // ============================================================
   // CHECK IF USER HAS ANY APPOINTMENT
   // ============================================================
 
   static bool get hasAppointment => appointments.isNotEmpty;
+
+  // ============================================================
+  // DONE VS ACTIVE (Appointment History)
+  // ============================================================
+
+  /// Swappable so tests can pin "now".
+  @visibleForTesting
+  static DateTime Function() clock = DateTime.now;
+
+  /// A visit counts as over this long after its start time.
+  static const visitLength = Duration(hours: 1);
+
+  /// The visit time has come and gone, whatever the shelter recorded.
+  static bool isPast(Map<String, dynamic> appointment) {
+    final start = DateTime.tryParse(
+      appointment['scheduledAt']?.toString() ?? '',
+    );
+    return start != null && start.add(visitLength).isBefore(clock());
+  }
+
+  /// Finished: completed, cancelled, or its time has already passed.
+  static bool isDone(Map<String, dynamic> appointment) {
+    final status = appointment['status']?.toString();
+    return status == 'Completed' ||
+        status == 'Cancelled' ||
+        isPast(appointment);
+  }
+
+  /// What a finished appointment shows in history. A past request the
+  /// shelter never confirmed is "Expired"; a past confirmed visit is "Done".
+  static String doneLabel(Map<String, dynamic> appointment) =>
+      switch (appointment['status']?.toString()) {
+        'Cancelled' => 'Cancelled',
+        'Pending' => 'Expired',
+        _ => 'Done',
+      };
+
+  static List<Map<String, dynamic>> get activeAppointments =>
+      appointments.where((a) => !isDone(a)).toList();
+
+  /// Finished appointments, most recent visit first.
+  static List<Map<String, dynamic>> get historyAppointments =>
+      appointments.where(isDone).toList()..sort(
+        (a, b) => (b['scheduledAt'] ?? '').toString().compareTo(
+          (a['scheduledAt'] ?? '').toString(),
+        ),
+      );
+
+  /// Only appointments still pending or upcoming count on Profile.
+  static int get activeCount => activeAppointments.length;
   // ============================================================
   // LATEST APPOINTMENT
   // ============================================================

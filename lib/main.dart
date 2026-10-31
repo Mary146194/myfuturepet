@@ -6,6 +6,7 @@ import 'config/supabase_config.dart';
 import 'screens/splash_screen.dart';
 
 import 'package:flutter/services.dart';
+import 'services/adoption_journey_service.dart';
 import 'services/favorites_service.dart';
 import 'services/notification_service.dart';
 import 'services/theme_service.dart';
@@ -26,6 +27,12 @@ Future<void> main() async {
     await FavoritesService().init();
     await NotificationService().init();
     await ThemeService().init();
+
+    // Adoption journey alerts follow whoever is signed in.
+    AdoptionJourneyService().init();
+    Supabase.instance.client.auth.onAuthStateChange.listen(
+      (_) => AdoptionJourneyService().init(),
+    );
 
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,

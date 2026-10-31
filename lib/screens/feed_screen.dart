@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notifications_screen.dart';
+import 'success_story_composer.dart';
 import '../services/community_service.dart';
+import '../widgets/success_stories_reel.dart';
+import '../widgets/inline_story_video.dart';
+import '../widgets/post_image.dart';
 import '../widgets/app_brand_title.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
@@ -11,7 +15,10 @@ class FeedScreen extends StatefulWidget {
   final CommunityService? communityService;
   final ValueNotifier<int>? unreadCount;
   final VoidCallback? onLogoTap;
-  const FeedScreen({super.key, this.communityService, this.unreadCount, this.onLogoTap});
+
+  /// Test hook for Success Story videos (no video platform in tests).
+  final StoryVideoBuilder? storyVideoBuilder;
+  const FeedScreen({super.key, this.communityService, this.unreadCount, this.onLogoTap, this.storyVideoBuilder});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -200,13 +207,30 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
 
+  // SUCCESS STORY PORTAL (ALUMNI ADOPTERS ONLY)
+  // ============================================================
+  Future<void> _openStoryPortal() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final posted = await SuccessStoryComposer.open(
+      context,
+      communityService: _communityService,
+    );
+    if (!posted || !mounted) return;
+    setState(() => selectedCategory = 'Success Stories');
+    _loadPosts();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Your success story is live!')),
+    );
+  }
+
   // CREATE POST MODAL (USER POSTING)
   // ============================================================
   void _openCreatePostModal() {
     final bool isDark = ThemeService.isDarkMode(context);
     final TextEditingController contentController = TextEditingController();
     final TextEditingController imageController = TextEditingController();
-    String postCategory = 'Success Stories';
+    // Success Stories come only from adopters, through the alumni portal.
+    const String postCategory = 'Tips';
     bool submitting = false;
 
     showModalBottomSheet(
@@ -244,7 +268,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Create Community Post',
+                            'Share a Tip',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -260,35 +284,32 @@ class _FeedScreenState extends State<FeedScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      'Category',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      // Announcements come from the shelter via the admin panel.
-                      children: ['Success Stories', 'Tips'].map((cat) {
-                        final selected = postCategory == cat;
-                        return ChoiceChip(
-                          label: Text(cat),
-                          selected: selected,
-                          selectedColor: primaryColor,
-                          labelStyle: TextStyle(
-                            color: selected ? Colors.white : (isDark ? const Color(0xFFE2E8F0) : darkText),
-                            fontSize: 12,
-                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                    Material(
+                      color: const Color(0xFF008F82).withValues(alpha: isDark ? 0.18 : 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _openStoryPortal();
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(Icons.auto_stories_outlined, color: Color(0xFF008F82), size: 20),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Adopted from JALRG? Share a Success Story instead.',
+                                  style: TextStyle(color: Color(0xFF008F82), fontSize: 12.5, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded, color: Color(0xFF008F82)),
+                            ],
                           ),
-                          backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                          onSelected: (val) {
-                            if (val) setModalState(() => postCategory = cat);
-                          },
-                        );
-                      }).toList(),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 14),
                     TextField(
@@ -296,7 +317,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       maxLines: 4,
                       style: TextStyle(color: isDark ? const Color(0xFFF8FAFC) : darkText),
                       decoration: InputDecoration(
-                        hintText: "Share your pet story, update, or tip...",
+                        hintText: "Share a pet care tip with the community...",
                         hintStyle: TextStyle(color: isDark ? const Color(0xFF64748B) : Colors.grey.shade400),
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -390,7 +411,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                               )
                             : const Text(
-                                'Publish Post',
+                                'Publish Tip',
                                 style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                               ),
                       ),
@@ -458,7 +479,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   RefreshIndicator(
                     onRefresh: _loadPosts,
                     color: primaryColor,
-                    child: _buildFeed(),
+                    child: _showReel ? _buildReel() : _buildFeed(),
                   ),
                   Positioned(
                     right: 18,
@@ -600,6 +621,35 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   // ============================================================
+  // SUCCESS STORIES REEL
+  // ============================================================
+  bool get _showReel =>
+      selectedCategory == 'Success Stories' && !_loadingPosts && !_postsFailed;
+
+  Widget _buildReel() {
+    final stories = _posts
+        .where((p) => p['category'] == 'Success Stories')
+        .toList();
+    return SuccessStoriesReel(
+      posts: stories,
+      isLiked: (id) => _likedPostIds[id] ?? false,
+      isLikePending: _pendingLikes.contains,
+      likeCount: (id) => _likeCounts[id] ?? 0,
+      commentCount: (id) => _commentCounts[id] ?? 0,
+      onLike: _toggleLike,
+      onComment: _showCommentsModal,
+      onShare: (author, content) =>
+          _sharePost(author: author, content: content),
+      formatCount: _formatCount,
+      timeAgo: _formatTimeAgo,
+      onShareStory: SuccessStoryComposer.myAlumni().isEmpty
+          ? null
+          : _openStoryPortal,
+      videoBuilder: widget.storyVideoBuilder,
+    );
+  }
+
+  // ============================================================
   // POSTS LIST
   // ============================================================
   Widget _buildFeed() {
@@ -663,6 +713,7 @@ class _FeedScreenState extends State<FeedScreen> {
     final String postId = post['id']?.toString() ?? '';
     final String content = post['content']?.toString() ?? '';
     final String? imageUrl = post['image_url']?.toString();
+    final String videoUrl = post['video_url']?.toString().trim() ?? '';
     final String timeAgo = _formatTimeAgo(post['created_at']);
 
     // Author info
@@ -747,21 +798,21 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
 
-          // Post Image (if present)
-          if (imageUrl != null && imageUrl.trim().isNotEmpty)
-            Container(
-              width: double.infinity,
-              height: 230,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-              ),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Center(
-                  child: Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 40),
-                ),
-              ),
+          // Story video (plays in place), else the post image if present
+          if (videoUrl.isNotEmpty)
+            InlineStoryVideo(
+              key: ValueKey('inline-video-$postId'),
+              url: videoUrl,
+              posterUrl: imageUrl,
+              background: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              videoBuilder: widget.storyVideoBuilder,
+            )
+          else if (imageUrl != null && imageUrl.trim().isNotEmpty)
+            // Natural shape, no stretching; tap for full screen.
+            PostImage(
+              key: ValueKey('post-image-$postId'),
+              url: imageUrl.trim(),
+              background: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
             ),
 
           // Post Text Content
@@ -867,8 +918,9 @@ class _FeedScreenState extends State<FeedScreen> {
   // FLOATING CREATE POST BUTTON
   // ============================================================
   Widget _buildCreatePostButton() {
+    final stories = selectedCategory == 'Success Stories';
     return GestureDetector(
-      onTap: _openCreatePostModal,
+      onTap: stories ? _openStoryPortal : _openCreatePostModal,
       child: Container(
         width: 54,
         height: 54,
@@ -883,10 +935,11 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ],
         ),
-        child: const Icon(
-          Icons.edit_rounded,
+        child: Icon(
+          stories ? Icons.add_a_photo_outlined : Icons.edit_rounded,
           color: Colors.white,
           size: 25,
+          semanticLabel: stories ? 'Share a success story' : 'Share a tip',
         ),
       ),
     );

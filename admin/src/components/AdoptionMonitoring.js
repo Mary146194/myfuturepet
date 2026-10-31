@@ -6,6 +6,7 @@ import {
   FiPhone, FiMail, FiMapPin,
 } from 'react-icons/fi';
 import { MdPets } from 'react-icons/md';
+import { notifyApplicationStatus } from '../utils/journeyNotifications';
 import './AdoptionMonitoring.css';
 
 function AdoptionMonitoring() {
@@ -130,6 +131,8 @@ function AdoptionMonitoring() {
         .eq('id', appId);
 
       if (updateError) throw updateError;
+
+      await notifyApplicationStatus(applications.find((a) => a.id === appId), newStatus);
 
       // Pet status follows the decision in the database (trigger
       // link_pet_status_to_application): approved -> pending, and back to

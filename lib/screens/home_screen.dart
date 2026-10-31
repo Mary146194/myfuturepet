@@ -11,9 +11,13 @@ import 'feed_screen.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
 import 'pet_details_screen.dart';
+import 'pet_matcher_screen.dart';
+import '../pet_matcher.dart';
+import '../services/pet_matcher_service.dart';
 import '../services/notification_service.dart';
 import '../services/favorites_service.dart';
 import '../services/theme_service.dart';
+import '../widgets/how_to_use_fab.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +37,24 @@ class _HomeScreenState extends State<HomeScreen> {
     PetData.syncWithSupabase().then((_) {
       SavedPetStore.syncWithFavorites(PetData.pets);
     });
+    _checkPetMatcher();
+  }
+
+  /// On a user's first sign-in (or right after registering), the Pet Matcher
+  /// comes before Home. null while checking, so Home never flashes first.
+  bool? _showPetMatcher;
+
+  Future<void> _checkPetMatcher() async {
+    var show = false;
+    try {
+      show = await PetMatcherService().needsOnboarding().timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => false,
+      );
+    } catch (e) {
+      debugPrint('Pet Matcher check skipped: $e');
+    }
+    if (mounted) setState(() => _showPetMatcher = show);
   }
 
   // ============================================================
@@ -74,6 +96,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = ThemeService.isDarkMode(context);
     final bgCol = isDark ? const Color(0xFF0F172A) : backgroundColor;
 
+    if (_showPetMatcher == null) {
+      return Scaffold(
+        backgroundColor: bgCol,
+        body: const Center(
+          child: CircularProgressIndicator(color: Color(0xFFA94327)),
+        ),
+      );
+    }
+    if (_showPetMatcher!) {
+      return PetMatcherScreen(
+        onFinished: () => setState(() => _showPetMatcher = false),
+      );
+    }
+
     return Scaffold(
       backgroundColor: bgCol,
 
@@ -106,7 +142,12 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               const SizedBox.shrink(),
 
-            FeedScreen(onLogoTap: _goHome),
+            // IndexedStack keeps hidden tabs alive; this tells feed videos
+            // they are off-screen so they don't stream or play there.
+            TickerMode(
+              enabled: _selectedIndex == 3,
+              child: FeedScreen(onLogoTap: _goHome),
+            ),
 
             ProfileScreen(
               onLogoTap: _goHome,
@@ -122,6 +163,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // BOTTOM NAVIGATION
       // ==========================================================
       bottomNavigationBar: _buildBottomNavigation(isDark),
+
+      // Tutorial shortcut, on the Home tab only.
+      floatingActionButton: _selectedIndex == 0 ? const HowToUseFab() : null,
     );
   }
 
@@ -392,6 +436,10 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
                 children: [
                   _buildHero(),
 
+                  const SizedBox(height: 14),
+
+                  _buildMatcherCard(),
+
                   const SizedBox(height: 16),
 
                   _sectionTitle(context, 'Categories'),
@@ -583,6 +631,97 @@ class _HomeContentScreenState extends State<HomeContentScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PET MATCHER
+  // ============================================================
+
+  Widget _buildMatcherCard() {
+    return ValueListenableBuilder<MatchProfile?>(
+      valueListenable: PetMatcherService().profile,
+      builder: (context, profile, _) => ValueListenableBuilder(
+        valueListenable: _homePets,
+        builder: (context, pets, _) {
+          final top = profile == null
+              ? null
+              : PetMatcher.rank(pets, profile).firstOrNull;
+          return Material(
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: Ink(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF008F82), Color(0xFF2F6FB5)],
+                ),
+              ),
+              child: InkWell(
+                key: const ValueKey('home-pet-matcher'),
+                onTap: () => PetMatcherScreen.open(context),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          top == null ? '💘' : '${top.score}%',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: top == null ? 26 : 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              top == null
+                                  ? 'Find your perfect match'
+                                  : 'Your top match: ${top.petName}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              top == null
+                                  ? '7 quick questions, then swipe through '
+                                        'the rescues that fit your life.'
+                                  : 'Swipe through your matches and save '
+                                        'your favorites.',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.88),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

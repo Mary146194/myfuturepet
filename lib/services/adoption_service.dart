@@ -76,7 +76,9 @@ class AdoptionService {
   }
 
   /// Fetch all applications submitted by the current user
-  Future<List<Map<String, dynamic>>> fetchMyApplications() async {
+  Future<List<Map<String, dynamic>>> fetchMyApplications({
+    bool throwOnError = false,
+  }) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
@@ -84,7 +86,7 @@ class AdoptionService {
       final response = await _client
           .from('adoption_applications')
           .select(
-            '*, pets(id, name, type, breed, birthdate, image_url, status, shelters(id, name, address, contact_number))',
+            '*, pets(id, name, type, breed, birthdate, image_url, status, updated_at, shelters(id, name, address, contact_number))',
           )
           .eq('applicant_id', user.id)
           .order('created_at', ascending: false);
@@ -93,6 +95,7 @@ class AdoptionService {
       return data.map((item) => item as Map<String, dynamic>).toList();
     } catch (e) {
       debugPrint('Error fetching user applications: $e');
+      if (throwOnError) rethrow;
       return [];
     }
   }

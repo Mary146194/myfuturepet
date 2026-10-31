@@ -41,7 +41,7 @@ class CommunityService {
         .from('community_posts')
         .select(
           '*, author:author_id($authorFields), shelter:shelter_id(id, name, logo_url), '
-          'pet:pet_id(id, name, type, breed, image_url), post_comments(count)',
+          'pet:pet_id(id, name, type, breed, image_url, status), post_comments(count)',
         );
     if (category != null && category != 'All' && category.isNotEmpty) {
       query = query.eq('category', category);
@@ -243,6 +243,7 @@ class CommunityService {
     String? imageUrl,
     String? category,
     String? petId,
+    String? videoUrl,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -292,6 +293,9 @@ class CommunityService {
       if (petId != null && petId.isNotEmpty) {
         insertData['pet_id'] = petId;
       }
+      if (videoUrl != null && videoUrl.trim().isNotEmpty) {
+        insertData['video_url'] = videoUrl.trim();
+      }
 
       final row = await _client
           .from('community_posts')
@@ -302,10 +306,76 @@ class CommunityService {
         throw StateError('Post confirmation was missing.');
       }
       return true;
+    } on PostgrestException catch (e) {
+      debugPrint('Error creating community post: $e');
+      // Database not migrated yet (supabase/sql/success_stories_video.sql).
+      if (e.code == '42703' || e.code == 'PGRST204') {
+        if (e.message.contains('video_url')) {
+          throw StateError('video-unsupported');
+        }
+      }
+      rethrow;
     } catch (e) {
       debugPrint('Error creating community post: $e');
       rethrow;
     }
+  }
+
+  static const _videoTypes = {
+    'mp4': 'video/mp4',
+    'm4v': 'video/mp4',
+    'mov': 'video/quicktime',
+    'webm': 'video/webm',
+    '3gp': 'video/3gpp',
+  };
+
+  /// Largest story video accepted (the story-videos bucket enforces it too).
+  static const maxVideoBytes = 50 * 1024 * 1024;
+
+  /// Upload a Success Story video to `story-videos/<user id>/` and return its
+  /// public URL for `community_posts.video_url`.
+  Future<String> uploadStoryVideo(
+    Uint8List bytes, {
+    required String fileName,
+  }) async {
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('You must be logged in to share a story.');
+    }
+    if (bytes.length > maxVideoBytes) {
+      throw ArgumentError('video-too-large');
+    }
+    final dot = fileName.lastIndexOf('.');
+    var ext = dot < 0 ? 'mp4' : fileName.substring(dot + 1).toLowerCase();
+    if (!_videoTypes.containsKey(ext)) ext = 'mp4';
+    final path = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.$ext';
+    await _client.storage
+        .from('story-videos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: _videoTypes[ext]!),
+        );
+    return _client.storage.from('story-videos').getPublicUrl(path);
+  }
+
+  /// Upload a Success Story photo to the same public bucket the app uses for
+  /// avatars, and return its public URL for `community_posts.image_url`.
+  Future<String> uploadStoryPhoto(Uint8List bytes) async {
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('You must be logged in to share a story.');
+    }
+    final path =
+        'stories/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    await _client.storage
+        .from('pet-photos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+        );
+    return _client.storage.from('pet-photos').getPublicUrl(path);
   }
 
   /// Fetch active broadcast announcements

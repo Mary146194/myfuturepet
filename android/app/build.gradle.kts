@@ -10,6 +10,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications (adoption journey alerts) needs desugaring.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -65,4 +67,5 @@ flutter {
 dependencies {
     // Only for ArCoreApk.checkAvailability (MainActivity); no AR session yet.
     implementation("com.google.ar:core:1.45.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

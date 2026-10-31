@@ -15,14 +15,27 @@ class AdoptionApplicationStore {
 
   static Future<List<Map<String, dynamic>>> syncWithSupabase() async {
     try {
-      final myApps = await AdoptionService().fetchMyApplications();
-      applications.clear();
-      for (var raw in myApps) {
+      // Throw on failure so an offline refresh cannot wipe the list.
+      applyRows(await AdoptionService().fetchMyApplications(throwOnError: true));
+    } catch (e) {
+      debugPrint('Error syncing adoption applications: $e');
+    }
+    return applications;
+  }
+
+  /// Replace the list from `adoption_applications` rows (with nested `pets`).
+  /// AdoptionJourneyService calls this too, so every screen shows one truth.
+  static void applyRows(List<Map<String, dynamic>> rows) {
+    final fetched = <Map<String, dynamic>>[];
+    for (var raw in rows) {
           final petRaw = raw['pets'] as Map<String, dynamic>?;
-          applications.add({
+          final shelterRaw = petRaw?['shelters'] as Map<String, dynamic>?;
+          fetched.add({
             'id': raw['id']?.toString() ?? '',
             'pet': {
               'id': petRaw?['id']?.toString() ?? '',
+              'shelter_id': shelterRaw?['id']?.toString() ?? '',
+              'shelter': shelterRaw?['name']?.toString() ?? '',
               'name': petRaw?['name']?.toString() ?? 'Pet',
               'breed': petRaw?['breed']?.toString() ?? '',
               'age':
@@ -42,11 +55,10 @@ class AdoptionApplicationStore {
             'reviewNotes': raw['review_notes']?.toString() ?? '',
             'decidedAt': raw['decided_at']?.toString() ?? '',
           });
-        }
-    } catch (e) {
-      debugPrint('Error syncing adoption applications: $e');
     }
-    return applications;
+    applications
+      ..clear()
+      ..addAll(fetched);
   }
 
   // ============================================================
@@ -56,6 +68,19 @@ class AdoptionApplicationStore {
   static bool get hasApplication {
     return applications.isNotEmpty;
   }
+
+  /// Finished: pet went home (approved + adopted), rejected or withdrawn.
+  /// Mirrors AdoptionJourney so the list and the road agree.
+  static bool isDone(Map<String, dynamic> application) {
+    final status = application['status']?.toString();
+    if (status == 'Rejected' || status == 'Withdrawn') return true;
+    final pet = application['pet'] as Map?;
+    return status == 'Approved' &&
+        pet?['status']?.toString().toLowerCase() == 'adopted';
+  }
+
+  /// Only applications still being processed count on Profile.
+  static int get activeCount => applications.where((a) => !isDone(a)).length;
 
   /// The same words the admin uses for each database status.
   static String statusLabel(dynamic status) {

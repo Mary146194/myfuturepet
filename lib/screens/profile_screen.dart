@@ -5,6 +5,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'my_applications_screen.dart';
 import '../adoption_application_store.dart';
+import '../adoption_journey.dart';
+import '../services/adoption_journey_service.dart';
+import '../widgets/adoption_history_tile.dart';
+import '../widgets/adoption_journey_tracker.dart';
+import 'success_story_composer.dart';
+import 'visit_appointment_screen.dart';
 
 import 'my_appointments_screen.dart';
 import '../appointment_store.dart';
@@ -19,6 +25,7 @@ import 'notifications_screen.dart';
 import '../services/notification_service.dart';
 import 'app_settings_screen.dart';
 import 'help_support_screen.dart';
+import 'how_to_use_screen.dart';
 import '../services/theme_service.dart';
 import '../widgets/app_brand_title.dart';
 
@@ -60,6 +67,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String profileImage = '';
   bool isLoadingProfile = true;
 
+  /// Application shown on the Progress Road when several are in flight.
+  String? _selectedJourneyId;
+
   // ============================================================
   // SUPABASE CLIENT
   // ============================================================
@@ -86,6 +96,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AppointmentStore.syncWithSupabase().then((_) {
       if (mounted) setState(() {});
     });
+
+    AdoptionJourneyService().init();
 
     _loadUserProfile();
   }
@@ -181,6 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       NotificationService().refreshUnreadCount(),
       AdoptionApplicationStore.syncWithSupabase(),
       AppointmentStore.syncWithSupabase(),
+      AdoptionJourneyService().refresh(),
     ]);
     SavedPetStore.syncWithFavorites(PetData.pets);
     if (mounted) setState(() {});
@@ -293,33 +306,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 24),
 
+                      _buildAdoptionJourney(isDark),
+
                       // My Activity
                       _buildSectionTitle('My Activity'),
 
                       const SizedBox(height: 12),
 
-                      // My Applications
-                      _buildActivityCard(
-                        icon: Icons.description_outlined,
-                        iconColor: const Color(0xFFA94327),
-                        title: 'My Applications',
-                        count: AdoptionApplicationStore.applicationCount,
-                        countLabel: 'application',
-                        status: AdoptionApplicationStore.latestStatus,
-                        isDark: isDark,
-                        activityCardBg: activityCardBg,
-                        borderCol: borderCol,
-                        textCol: textCol,
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MyApplicationsScreen(
-                                onBrowsePets: widget.onBrowsePets,
-                              ),
-                            ),
+                      // My Applications (status word follows the journey)
+                      ValueListenableBuilder<List<AdoptionJourney>>(
+                        valueListenable: AdoptionJourneyService().journeys,
+                        builder: (context, journeys, _) {
+                          // Count only applications still in progress; once
+                          // all are done the pill shows the latest outcome.
+                          final active = journeys
+                              .where((j) => j.isActive)
+                              .toList();
+                          final pool = active.isNotEmpty ? active : journeys;
+                          final latest = pool.isEmpty
+                              ? null
+                              : pool.reduce(
+                                  (a, b) =>
+                                      (b.submittedAt ?? DateTime(0)).isAfter(
+                                        a.submittedAt ?? DateTime(0),
+                                      )
+                                      ? b
+                                      : a,
+                                );
+                          final activeCount = journeys.isEmpty
+                              ? AdoptionApplicationStore.activeCount
+                              : active.length;
+                          return _buildActivityCard(
+                            icon: Icons.description_outlined,
+                            iconColor: const Color(0xFFA94327),
+                            title: 'My Applications',
+                            count: activeCount,
+                            countLabel: 'application',
+                            status:
+                                latest?.statusLabel ??
+                                (AdoptionApplicationStore.hasApplication &&
+                                        activeCount == 0
+                                    ? 'Done'
+                                    : AdoptionApplicationStore.latestStatus),
+                            isDark: isDark,
+                            activityCardBg: activityCardBg,
+                            borderCol: borderCol,
+                            textCol: textCol,
+                            onTap: _openMyApplications,
                           );
-                          setState(() {});
                         },
                       ),
 
@@ -356,28 +390,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 8),
 
-                      // My Appointments
-                      _buildActivityCard(
-                        icon: Icons.calendar_month_outlined,
-                        iconColor: const Color(0xFF008F82),
-                        title: 'My Appointments',
-                        count: AppointmentStore.appointmentCount,
-                        countLabel: 'appointment',
-                        isDark: isDark,
-                        activityCardBg: activityCardBg,
-                        borderCol: borderCol,
-                        textCol: textCol,
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MyAppointmentsScreen(
-                                onBrowsePets: widget.onBrowsePets,
+                      // My Appointments: count upcoming only; "Done" once
+                      // every appointment is completed or cancelled.
+                      ValueListenableBuilder<List<AdoptionJourney>>(
+                        valueListenable: AdoptionJourneyService().journeys,
+                        builder: (context, _, _) => _buildActivityCard(
+                          icon: Icons.calendar_month_outlined,
+                          iconColor: const Color(0xFF008F82),
+                          title: 'My Appointments',
+                          count: AppointmentStore.activeCount,
+                          countLabel: 'appointment',
+                          status:
+                              AppointmentStore.hasAppointment &&
+                                  AppointmentStore.activeCount == 0
+                              ? 'Done'
+                              : null,
+                          isDark: isDark,
+                          activityCardBg: activityCardBg,
+                          borderCol: borderCol,
+                          textCol: textCol,
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MyAppointmentsScreen(
+                                  onBrowsePets: widget.onBrowsePets,
+                                ),
                               ),
-                            ),
-                          );
-                          setState(() {});
-                        },
+                            );
+                            setState(() {});
+                          },
+                        ),
                       ),
 
                       const SizedBox(height: 24),
@@ -553,6 +596,166 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ============================================================
+  // ADOPTION JOURNEY (PROGRESS ROAD)
+  // ============================================================
+
+  Widget _buildAdoptionJourney(bool isDark) {
+    final service = AdoptionJourneyService();
+    return ValueListenableBuilder<List<AdoptionJourney>>(
+      valueListenable: service.journeys,
+      builder: (context, journeys, _) {
+        if (journeys.isEmpty) return const SizedBox.shrink();
+        return ValueListenableBuilder<Set<String>>(
+          valueListenable: service.celebrations,
+          builder: (context, celebrations, _) {
+            // Finished adoptions move to history once a new one is in
+            // progress (after their celebration has played).
+            final board = JourneyBoard.of(journeys, celebrating: celebrations);
+            final tracked = board.tracked;
+            // A fresh milestone takes the spotlight over the user's pick.
+            final celebrating = tracked
+                .where((j) => celebrations.contains(j.applicationId))
+                .firstOrNull;
+            final selected =
+                celebrating ??
+                tracked
+                    .where((j) => j.applicationId == _selectedJourneyId)
+                    .firstOrNull ??
+                tracked.first;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle(
+                  'My Adoption Journey',
+                  icon: Icons.route_rounded,
+                ),
+                const SizedBox(height: 10),
+                if (tracked.length > 1) ...[
+                  SizedBox(
+                    height: 32,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: tracked.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final j = tracked[i];
+                        final active = j.applicationId == selected.applicationId;
+                        return ChoiceChip(
+                          label: Text(j.petName),
+                          selected: active,
+                          showCheckmark: false,
+                          visualDensity: VisualDensity.compact,
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: active
+                                ? Colors.white
+                                : (isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : darkText),
+                          ),
+                          selectedColor: tealColor,
+                          backgroundColor: isDark
+                              ? const Color(0xFF1E293B)
+                              : Colors.white,
+                          side: BorderSide(
+                            color: active
+                                ? tealColor
+                                : (isDark
+                                      ? const Color(0xFF334155)
+                                      : const Color(0xFFE2E8F0)),
+                          ),
+                          onSelected: (_) => setState(
+                            () => _selectedJourneyId = j.applicationId,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                AdoptionJourneyTracker(
+                  key: ValueKey(selected.applicationId),
+                  journey: selected,
+                  isDark: isDark,
+                  celebrate: celebrations.contains(selected.applicationId),
+                  onCelebrated: () =>
+                      service.markCelebrated(selected.applicationId),
+                  onBookMeetAndGreet: () =>
+                      VisitAppointmentScreen.openMeetAndGreet(context, selected),
+                  onShareStory: () => _shareStory(selected),
+                  onTap: _openMyApplications,
+                ),
+                if (board.history.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildSectionTitle(
+                    'Adoption History',
+                    icon: Icons.history_rounded,
+                  ),
+                  const SizedBox(height: 10),
+                  for (final j in board.history) ...[
+                    AdoptionHistoryTile(
+                      journey: j,
+                      isDark: isDark,
+                      onTap: () => _openApplicationDetails(j.applicationId),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+                const SizedBox(height: 24),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _shareStory(AdoptionJourney journey) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final posted = await SuccessStoryComposer.open(
+      context,
+      initialPet: journey,
+    );
+    if (posted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            "${journey.petName}'s story is live in Community › Success Stories!",
+          ),
+        ),
+      );
+    }
+  }
+
+  void _openApplicationDetails(String applicationId) {
+    final application = AdoptionApplicationStore.applications
+        .where((a) => a['id'] == applicationId)
+        .firstOrNull;
+    if (application == null) {
+      _openMyApplications();
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ApplicationDetailsScreen(application: application),
+      ),
+    );
+  }
+
+  Future<void> _openMyApplications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyApplicationsScreen(onBrowsePets: widget.onBrowsePets),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  // ============================================================
   // SECTION TITLE
   // ============================================================
 
@@ -721,6 +924,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
+          _buildSettingItem(
+            icon: Icons.menu_book_outlined,
+            title: 'How to Use',
+            textCol: textCol,
+            subTextCol: subTextCol,
+            onTap: () => HowToUseScreen.open(context),
+          ),
           _buildSettingItem(
             icon: Icons.settings_outlined,
             title: 'App Settings',
@@ -1133,6 +1343,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       AdoptionApplicationStore.clear();
       AppointmentStore.clear();
+      AdoptionJourneyService().signOut();
       await supabase.auth.signOut(scope: SignOutScope.local);
       if (!mounted) return;
 

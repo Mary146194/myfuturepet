@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/theme_service.dart';
+import 'how_to_use_screen.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -118,6 +119,50 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ==================================================
+            // HOW TO USE (step-by-step guides)
+            // ==================================================
+            Material(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                key: const ValueKey('help-how-to-use'),
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => HowToUseScreen.open(context),
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.menu_book_rounded, color: Colors.white, size: 30),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'How to Use the App',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Step-by-step guides for every feature',
+                              style: TextStyle(color: Colors.white, fontSize: 12.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+
             // ==================================================
             // SHELTER CONTACT CARD
             // ==================================================

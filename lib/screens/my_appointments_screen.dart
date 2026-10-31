@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../adoption_journey.dart';
 import '../appointment_store.dart';
+import '../services/adoption_journey_service.dart';
 import '../services/appointment_service.dart';
 import 'pets_screen.dart';
 
@@ -54,6 +56,8 @@ class _MyAppointmentsScreenState
       await AppointmentStore.syncWithSupabase(
         service: widget.appointmentService, throwOnError: true,
       );
+      // Keep the adoption journey (and its stage chips) in step.
+      await AdoptionJourneyService().refresh();
     } catch (_) {
       if (mounted) _loadFailed = true;
     } finally {
@@ -65,6 +69,15 @@ class _MyAppointmentsScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Realtime journey refreshes also update AppointmentStore, so a visit the
+    // shelter confirms shows here without reopening the screen.
+    return ValueListenableBuilder<List<AdoptionJourney>>(
+      valueListenable: AdoptionJourneyService().journeys,
+      builder: (context, _, _) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final applications =
         AppointmentStore.getAllAppointments();
 
@@ -309,7 +322,9 @@ class _MyAppointmentsScreenState
           const SizedBox(height: 6),
 
           Text(
-            '${appointments.length} appointment${appointments.length == 1 ? '' : 's'} • Philippine time (UTC+8)',
+            '${AppointmentStore.activeCount} upcoming • '
+            '${AppointmentStore.historyAppointments.length} done • '
+            'Philippine time (UTC+8)',
             style: const TextStyle(
               color: secondaryText,
               fontSize: 13,
@@ -318,24 +333,43 @@ class _MyAppointmentsScreenState
 
           const SizedBox(height: 20),
 
-          ...List.generate(
-            appointments.length,
-            (index) {
-              final appointment =
-                  appointments[index];
+          // Completed or cancelled visits move to "Appointment History".
+          if (AppointmentStore.activeAppointments.isEmpty)
+            _buildNothingUpcoming()
+          else
+            for (final appointment in AppointmentStore.activeAppointments)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildAppointmentCard(appointment, 0),
+              ),
 
-              return Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 14,
+          if (AppointmentStore.historyAppointments.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.history_rounded, size: 18, color: primaryColor),
+                SizedBox(width: 6),
+                Text(
+                  'Appointment History',
+                  style: TextStyle(
+                    color: darkText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final appointment in AppointmentStore.historyAppointments)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
                 child: _buildAppointmentCard(
                   appointment,
-                  index,
+                  0,
+                  inHistory: true,
                 ),
-              );
-            },
-          ),
+              ),
+          ],
         ],
       ),
     );
@@ -345,10 +379,44 @@ class _MyAppointmentsScreenState
   // APPOINTMENT CARD
   // ============================================================
 
+  Widget _buildNothingUpcoming() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD7E3E7)),
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.event_available_rounded,
+            color: Color(0xFF2E7D32),
+            size: 22,
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'No upcoming appointments. Your finished visits are in the history below.',
+              style: TextStyle(
+                color: secondaryText,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAppointmentCard(
     Map<String, dynamic> appointment,
-    int index,
-  ) {
+    int index, {
+    bool inHistory = false,
+  }) {
     final Map<String, dynamic> pet =
         Map<String, dynamic>.from(
       appointment['pet'] as Map,
@@ -374,9 +442,9 @@ class _MyAppointmentsScreenState
         appointment['time']?.toString() ??
             'No time selected';
 
-    final String status =
-        appointment['status']?.toString() ??
-            'Confirmed';
+    final String status = inHistory
+        ? AppointmentStore.doneLabel(appointment)
+        : appointment['status']?.toString() ?? 'Confirmed';
 
     DateTime date;
 
@@ -501,9 +569,12 @@ class _MyAppointmentsScreenState
                   } else if (sLower.contains('cancel') || sLower.contains('reject')) {
                     badgeBg = const Color(0xFFFEE2E2);
                     badgeText = const Color(0xFFDC2626);
-                  } else if (sLower.contains('complete')) {
-                    badgeBg = const Color(0xFFE0F2FE);
-                    badgeText = const Color(0xFF0284C7);
+                  } else if (sLower == 'expired') {
+                    badgeBg = const Color(0xFFF1F5F9);
+                    badgeText = const Color(0xFF64748B);
+                  } else if (sLower.contains('complete') || sLower == 'done') {
+                    badgeBg = const Color(0xFFE8F5E9);
+                    badgeText = const Color(0xFF2E7D32);
                   }
                   return Container(
                     padding: const EdgeInsets.symmetric(
@@ -675,6 +746,13 @@ class _MyAppointmentsScreenState
             ],
           ),
 
+          // ====================================================
+          // ADOPTION JOURNEY LINK (meet & greet for an application)
+          // ====================================================
+
+          if (appointmentType == 'Meet and Greet' && !inHistory)
+            _buildJourneyChip(pet['id']?.toString()),
+
           const SizedBox(height: 16),
 
           // ====================================================
@@ -719,6 +797,48 @@ class _MyAppointmentsScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // ADOPTION JOURNEY CHIP
+  // ============================================================
+
+  Widget _buildJourneyChip(String? petId) {
+    final journey = AdoptionJourneyService().journeyForPet(petId);
+    if (journey == null) return const SizedBox.shrink();
+    final step = journey.stage.index + 1;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAF8F6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.route_rounded,
+              size: 16,
+              color: Color(0xFF008F82),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Adoption journey · Step $step of '
+                '${JourneyStage.values.length}: ${journey.statusLabel}',
+                style: const TextStyle(
+                  color: Color(0xFF00695F),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { MdPets } from 'react-icons/md';
 import ImageUploader from './ImageUploader';
+import { notifyPetAdopted } from '../utils/journeyNotifications';
 import './PetManagement.css';
 
 const DEFAULT_FORM_STATE = {
@@ -204,6 +205,10 @@ function PetManagement() {
           .update(payload)
           .eq('id', activePetId);
         if (updateError) throw updateError;
+        const previous = pets.find((p) => p.id === activePetId);
+        if (payload.status === 'adopted' && previous?.status !== 'adopted') {
+          await notifyPetAdopted(activePetId, payload.name);
+        }
         showToast(`Pet "${formData.name}" profile updated successfully.`);
       }
 
@@ -244,6 +249,10 @@ function PetManagement() {
         .eq('id', petId);
 
       if (updateError) throw updateError;
+      const pet = pets.find((p) => p.id === petId);
+      if (newStatus === 'adopted' && pet?.status !== 'adopted') {
+        await notifyPetAdopted(petId, pet?.name);
+      }
       showToast(`Status updated to ${newStatus}.`);
       setPets((prev) =>
         prev.map((p) => (p.id === petId ? { ...p, status: newStatus } : p))
